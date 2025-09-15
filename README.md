@@ -1,2 +1,2 @@
 # comp5313_gr3_projects
-This repo is created for students in Group 3 at MsC Program in Computer science at Lakehead University in Thunder Bay. This is to be used for COMP5313 project call 
+This repository was created for students in Group 3 of the COMP5313 course (Fall 2025) in the MSc Computer Science program at Lakehead University, Thunder Bay. It is intended for use in course-related projects.
