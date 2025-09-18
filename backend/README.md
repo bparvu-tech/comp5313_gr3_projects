@@ -47,7 +47,7 @@ The backend requires a **Dialogflow service account key** to connect to our bot.
    dialogflow_key.json
    ```
 
-7. Place it in the `backend/` directory (where `app.py` lives).
+7. Place it in the `backend/` directory.
 
 ### Option B: If you cannot access GCP
 
@@ -61,7 +61,7 @@ Place it in the `backend/` folder.
 Make sure you are inside the `backend/` folder and then run:
 
 ```bash
-python app.py
+python run.py
 ```
 
 ## 6. Updating Dependencies
@@ -72,13 +72,10 @@ If new libraries are added during development, update your local environment wit
 conda env update -f environment.yml --prune
 ```
 
-If you installed new packages, **remember to update the environment file** and commit it:
+If you installed new packages, **remember to update the environment file**:
 
 ```bash
 conda env export > environment.yml
-git add environment.yml
-git commit -m "Update backend environment"
-git push
 ```
 
 ## Development Workflow
