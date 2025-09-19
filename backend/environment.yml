@@ -152,6 +152,7 @@ dependencies:
   - pysocks=1.7.1=py313hca03da5_0
   - python=3.13.7=hc28b8d9_100_cp313
   - python-dateutil=2.9.0post0=py313hca03da5_2
+  - python-dotenv=1.1.0=py313hca03da5_0
   - python-fastjsonschema=2.20.0=py313hca03da5_0
   - python-json-logger=3.2.1=py313hca03da5_0
   - python-tzdata=2025.2=pyhd3eb1b0_0
@@ -205,5 +206,16 @@ dependencies:
   - zlib=1.3.1=h5f15de7_0
   - zstd=1.5.7=h817c040_0
   - pip:
-    - google-cloud-dialogflow
+      - cachetools==5.5.2
+      - google-api-core==2.25.1
+      - google-auth==2.40.3
+      - google-cloud-dialogflow==2.41.2
+      - googleapis-common-protos==1.70.0
+      - grpcio==1.75.0
+      - grpcio-status==1.75.0
+      - proto-plus==1.26.1
+      - protobuf==6.32.1
+      - pyasn1==0.6.1
+      - pyasn1-modules==0.4.2
+      - rsa==4.9.1
 prefix: /Users/lmc/anaconda3/envs/comp5313
