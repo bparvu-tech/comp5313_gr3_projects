@@ -30,5 +30,5 @@ Please follow the instructions in the [backend/README.md](backend/README.md) for
 
 ### Chatbot Frontend Access
 
-username: comp5313lakeheadu
+username: comp5313lakeheadu   
 pass: Student1
