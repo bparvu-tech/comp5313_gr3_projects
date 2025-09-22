@@ -27,8 +27,3 @@ cd comp5313_gr3_projects
 
 The backend runs on **Python (Anaconda environment)**.  
 Please follow the instructions in the [backend/README.md](backend/README.md) for detailed setup and usage.
-
-### Chatbot Frontend Access
-
-username: comp5313lakeheadu   
-pass: Student1
