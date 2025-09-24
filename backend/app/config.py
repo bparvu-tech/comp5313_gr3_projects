@@ -1,3 +1,4 @@
+"""Configuration settings for the Lakehead University Chatbot backend."""
 import os
 
 # Base directory = backend/

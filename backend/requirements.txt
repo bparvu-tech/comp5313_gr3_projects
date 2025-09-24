@@ -1,0 +1,19 @@
+# Core Flask dependencies
+Flask==3.1.2
+flask-cors==4.0.0
+
+# Google Cloud Dialogflow dependencies
+google-cloud-dialogflow==2.41.2
+google-auth==2.40.3
+google-api-core==2.25.1
+
+# Additional dependencies
+cachetools==5.5.2
+googleapis-common-protos==1.70.0
+grpcio==1.75.0
+grpcio-status==1.75.0
+proto-plus==1.26.1
+protobuf==6.32.1
+pyasn1==0.6.1
+pyasn1-modules==0.4.2
+rsa==4.9.1

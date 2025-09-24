@@ -1,7 +1,26 @@
-# Backend Setup Guide
+# Lakehead University Chatbot Backend
 
-This backend is part of the **COMP5313 Group 3 Project**.  
+This backend is part of the **COMP5313 Group 3 Project** - a chatbot for Lakehead University.  
 We use [Anaconda](https://www.anaconda.com) for environment management to ensure all team members can run the project in the same setup.
+
+## Features (Prototype 1)
+
+✅ **Core Functionality**
+- Flask REST API with Dialogflow integration
+- Chat endpoint for user interactions
+- Health check endpoint for monitoring
+- Session management support
+
+✅ **Production Ready**
+- Comprehensive error handling and logging
+- Input validation and sanitization
+- CORS support for frontend integration
+- PythonAnywhere deployment ready
+
+✅ **Security & Monitoring**
+- Proper credential management
+- Request/response logging
+- Error tracking and fallback responses
 
 ## 1. Navigate to the backend/ folder
 
@@ -78,8 +97,42 @@ If you installed new packages, **remember to update the environment file**:
 conda env export > environment.yml
 ```
 
+## 🚀 API Documentation
+
+### 🌐 Interactive Documentation (Recommended)
+- **Swagger UI**: http://localhost:5000/docs/
+  - Interactive API explorer
+  - Try endpoints directly in browser
+  - Always up-to-date with code changes
+
+### 📋 Quick Reference
+
+#### Versioned API (Recommended)
+- `GET /api/v1/health/` - Service health check
+- `POST /api/v1/chat/` - Chat with the bot
+
+#### Legacy API (Backward Compatible)
+- `GET /health` - Legacy health check
+- `POST /chat` - Legacy chat endpoint
+
+### 📚 Detailed Documentation
+- **Full API Guide**: [API_DOCUMENTATION.md](API_DOCUMENTATION.md)
+- **OpenAPI Spec**: http://localhost:5000/api/v1/swagger.json
+
+### 🔧 Key Features
+- ✅ **Automatic Documentation**: Generated from code, always current
+- ✅ **Interactive Testing**: Try endpoints directly in browser
+- ✅ **Request Validation**: Automatic input validation
+- ✅ **Type Safety**: Guaranteed response formats
+- ✅ **Error Handling**: Comprehensive error responses
+
+## Deployment
+
+For PythonAnywhere deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ## Development Workflow
 
 - All backend code lives under `backend/`.  
 - Commit changes through feature branches and submit pull requests for review.  
 - Update `environment.yml` if new dependencies are added.
+- Test endpoints using the provided curl examples or Postman.
