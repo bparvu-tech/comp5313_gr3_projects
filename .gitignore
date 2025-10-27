@@ -3,3 +3,7 @@ backend/dialogflow_key.json
 .env
 __pycache__/
 *.pyc
+.DS_Store
+
+# Scraped data
+data/
