@@ -8,10 +8,10 @@ from flask_cors import CORS
 
 def create_app(config_object=None):
     """Create and configure Flask application.
-    
+
     Args:
         config_object: Optional configuration object or dictionary
-        
+
     Returns:
         Flask: Configured Flask application instance
     """
