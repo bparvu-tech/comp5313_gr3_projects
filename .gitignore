@@ -4,6 +4,6 @@ backend/dialogflow_key.json
 __pycache__/
 *.pyc
 .DS_Store
-
+.cursorrules
 # Scraped data
 data/
