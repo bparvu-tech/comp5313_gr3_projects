@@ -90,10 +90,10 @@ class HealthCheck(Resource):
     @health_ns.marshal_with(health_response_model, code=200)
     def get(self):
         """Get service health status.
-        
+
         Returns the current status of the Lakehead University Chatbot service,
         including service name and version information.
-        
+
         This endpoint can be used for:
         - Health monitoring
         - Load balancer health checks
@@ -114,19 +114,19 @@ class Chat(Resource):
     @chat_ns.expect(chat_request_model, validate=False)
     def post(self):  # pylint: disable=too-many-return-statements
         """Process a chat message through Dialogflow.
-        
+
         Send a user message to the Lakehead University Chatbot and receive
         a response processed through Google Dialogflow.
-        
+
         **Request Body:**
         - `message` (required): The user's message (1-1000 characters)
         - `session_id` (optional): Session identifier for conversation context
-        
+
         **Response:**
         - `response`: The chatbot's reply
         - `session_id`: Session identifier used
         - `timestamp`: When the response was generated
-        
+
         **Error Codes:**
         - 400: Invalid request (empty message, message too long, invalid JSON)
         - 500: Internal server error (Dialogflow connection issues)
@@ -202,7 +202,7 @@ class LegacyHealthCheck(Resource):
     @api.marshal_with(health_response_model, code=200)
     def get(self):
         """Legacy health check endpoint.
-        
+
         This endpoint is maintained for backward compatibility.
         Use /api/v1/health/ for new integrations.
         """
@@ -224,7 +224,7 @@ class LegacyChat(Resource):
     @api.marshal_with(error_model, code=500)
     def post(self):  # pylint: disable=too-many-return-statements
         """Legacy chat endpoint.
-        
+
         This endpoint is maintained for backward compatibility.
         Use /api/v1/chat/ for new integrations.
         """
