@@ -714,7 +714,24 @@ class LakeheadScraper:
             element.decompose()
 
         # Extract main content
-        main_content = soup.find('main') or soup.find('article') or soup.find('div', class_='content')
+        main_content = (
+            soup.find('main') or
+            soup.find('article') or
+            soup.find('div', class_='content') or
+            soup.find('div', id=re.compile(r'(content|main|body|article|text)', re.I)) or
+            soup.find('div', class_=re.compile(r'(content|main|body|article|text)', re.I))
+        )
+
+        if not main_content:
+            content_candidates = []
+            for container in soup.find_all('div'):
+                text = self.clean_text(container.get_text())
+                if len(text) >= 200:
+                    content_candidates.append((len(text), container))
+
+            if content_candidates:
+                main_content = max(content_candidates, key=lambda candidate: candidate[0])[1]
+
         if main_content:
             content['main_content'] = self.clean_text(main_content.get_text())
 
