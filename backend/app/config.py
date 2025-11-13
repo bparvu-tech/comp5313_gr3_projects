@@ -10,8 +10,12 @@ DIALOGFLOW_KEY_PATH = os.getenv(
     os.path.join(BASE_DIR, "dialogflow_key.json")
 )
 
-# Project ID
-DIALOGFLOW_PROJECT_ID = os.getenv("DIALOGFLOW_PROJECT_ID", "lu-assistant-bot")
+# Project ID for Dialogflow CX (Conversational Agents)
+DIALOGFLOW_PROJECT_ID = os.getenv("DIALOGFLOW_PROJECT_ID", "comp5313-chatbot-473118")
+
+# Dialogflow CX Agent settings
+DIALOGFLOW_LOCATION = os.getenv("DIALOGFLOW_LOCATION", "us-central1")
+DIALOGFLOW_AGENT_ID = os.getenv("DIALOGFLOW_AGENT_ID", "a02eb0fe-e6a4-4815-8fa7-c832a259326f")
 
 # Optional check: warn if file is missing
 if not os.path.exists(DIALOGFLOW_KEY_PATH):
