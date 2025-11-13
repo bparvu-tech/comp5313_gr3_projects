@@ -5,6 +5,7 @@ A full-stack chatbot application for Lakehead University, built with Flask, Dial
 ## 🎯 Project Overview
 
 This chatbot helps students, prospective students, and visitors get information about:
+
 - Academic programs and courses
 - Admissions and applications
 - Student services and resources
@@ -148,6 +149,7 @@ Bot: Lakehead University offers residence options at both Thunder Bay and Orilli
 ## 🧪 Testing
 
 ### Test Backend
+
 ```bash
 # Health check
 curl http://localhost:5000/api/v1/health/
@@ -159,12 +161,14 @@ curl -X POST http://localhost:5000/api/v1/chat/ \
 ```
 
 ### Test Frontend
+
 1. Open http://localhost:8080 in browser
 2. Open Developer Console (F12)
 3. Send test messages
 4. Verify responses appear correctly
 
 ### API Documentation
+
 - Swagger UI: http://localhost:5000/docs/
 - OpenAPI Spec: http://localhost:5000/api/v1/swagger.json
 
@@ -173,6 +177,7 @@ curl -X POST http://localhost:5000/api/v1/chat/ \
 ### PythonAnywhere (Recommended)
 
 **Backend**:
+
 ```bash
 1. Upload backend/ folder
 2. Install dependencies: pip install -r requirements.txt
@@ -182,6 +187,7 @@ curl -X POST http://localhost:5000/api/v1/chat/ \
 ```
 
 **Frontend**:
+
 ```bash
 1. Upload frontend/index.html to static/
 2. Configure static files mapping
@@ -191,6 +197,7 @@ curl -X POST http://localhost:5000/api/v1/chat/ \
 **Full Guide**: See [backend/DEPLOYMENT.md](backend/DEPLOYMENT.md)
 
 ### Alternative Platforms
+
 - **Frontend**: GitHub Pages, Netlify, Vercel
 - **Backend**: Heroku, Google Cloud Run, AWS Elastic Beanstalk
 - **Dialogflow**: Already hosted on Google Cloud
@@ -198,12 +205,14 @@ curl -X POST http://localhost:5000/api/v1/chat/ \
 ## 🔧 Development Setup
 
 ### Prerequisites
+
 - Python 3.8+
 - pip (Python package manager)
 - Dialogflow service account key
 - Modern web browser
 
 ### Backend Setup
+
 ```bash
 cd backend
 pip install -r requirements.txt
@@ -213,6 +222,7 @@ python run.py
 ```
 
 ### Frontend Setup
+
 ```bash
 cd frontend
 python3 serve.py
@@ -221,6 +231,7 @@ python3 -m http.server 8080
 ```
 
 ### Generate Dialogflow Intents
+
 ```bash
 cd scripts
 python3 generate_dialogflow_intents.py
@@ -238,6 +249,7 @@ python3 generate_dialogflow_intents.py
 ## 🔐 Security & Configuration
 
 ### Required Files (Not in Git)
+
 - `backend/dialogflow_key.json` - Dialogflow service account credentials
 
 ### Environment Variables
@@ -247,6 +259,7 @@ DIALOGFLOW_KEY_PATH=/path/to/dialogflow_key.json
 ```
 
 ### Security Notes
+
 - ⚠️ Never commit `dialogflow_key.json`
 - ⚠️ Disable CORS wildcard in production
 - ✅ Use HTTPS in production
@@ -268,6 +281,7 @@ DIALOGFLOW_KEY_PATH=/path/to/dialogflow_key.json
 ## 🎯 Future Enhancements
 
 ### Phase 2 Ideas
+
 - [ ] Voice input/output support
 - [ ] Rich media responses (images, videos)
 - [ ] Multi-language support (French)
@@ -280,6 +294,7 @@ DIALOGFLOW_KEY_PATH=/path/to/dialogflow_key.json
 - [ ] Proactive notifications
 
 ### Technical Improvements
+
 - [ ] Add caching layer (Redis)
 - [ ] Implement rate limiting
 - [ ] Add comprehensive test suite
@@ -294,16 +309,19 @@ DIALOGFLOW_KEY_PATH=/path/to/dialogflow_key.json
 ### Common Issues
 
 **Backend won't start**:
+
 - Check if Python 3.8+ is installed
 - Verify all dependencies are installed
 - Ensure `dialogflow_key.json` exists
 
 **Frontend can't connect**:
+
 - Verify backend is running on port 5000
 - Check CORS configuration
 - Review browser console for errors
 
 **Dialogflow not responding**:
+
 - Verify intents are uploaded
 - Check Dialogflow console for agent status
 - Review backend logs for API errors
@@ -313,6 +331,7 @@ DIALOGFLOW_KEY_PATH=/path/to/dialogflow_key.json
 ## 📞 Support
 
 For issues or questions:
+
 1. Check documentation in respective directories
 2. Review error logs (browser console / backend terminal)
 3. Verify all services are running
