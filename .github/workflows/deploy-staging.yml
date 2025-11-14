@@ -1,0 +1,80 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches:
+      - develop
+      - feat/*
+  workflow_dispatch:
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    environment: staging
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Deploy to PythonAnywhere Staging
+        env:
+          PYTHONANYWHERE_USERNAME: ${{ secrets.PYTHONANYWHERE_USERNAME }}
+          PYTHONANYWHERE_API_TOKEN: ${{ secrets.PYTHONANYWHERE_API_TOKEN }}
+          PYTHONANYWHERE_DOMAIN: ${{ secrets.PYTHONANYWHERE_DOMAIN }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          pip install requests
+          
+          cat > deploy_script.py << 'DEPLOY_EOF'
+          import requests
+          import os
+          import sys
+          
+          username = os.environ['PYTHONANYWHERE_USERNAME']
+          token = os.environ['PYTHONANYWHERE_API_TOKEN']
+          domain = os.environ['PYTHONANYWHERE_DOMAIN']
+          branch = os.environ['BRANCH']
+          
+          api_base = f'https://www.pythonanywhere.com/api/v0/user/{username}'
+          headers = {'Authorization': f'Token {token}'}
+          
+          print(f"🚀 Deploying branch '{branch}' to PythonAnywhere...")
+          
+          # Pull from specific branch
+          response = requests.post(
+              f'{api_base}/consoles/bash/send_input',
+              headers=headers,
+              json={'input': f'cd ~/comp5313_gr3_projects && git fetch origin && git checkout {branch} && git pull origin {branch}\n'}
+          )
+          
+          if response.status_code == 200:
+              print(f"✓ Code from '{branch}' pulled successfully")
+          else:
+              print(f"✗ Failed to pull code: {response.status_code}")
+              sys.exit(1)
+          
+          # Install dependencies
+          print("📦 Installing dependencies...")
+          response = requests.post(
+              f'{api_base}/consoles/bash/send_input',
+              headers=headers,
+              json={'input': 'cd ~/comp5313_gr3_projects && source venv/bin/activate && pip install -r backend/requirements.txt\n'}
+          )
+          
+          # Reload web app
+          print("🔄 Reloading web app...")
+          response = requests.post(
+              f'{api_base}/webapps/{domain}/reload/',
+              headers=headers
+          )
+          
+          if response.status_code == 200:
+              print(f"✓ Deployment complete! Branch '{branch}' is live at https://{domain}")
+          else:
+              print(f"✗ Failed to reload: {response.status_code}")
+              sys.exit(1)
+          
+          DEPLOY_EOF
+          
+          python deploy_script.py
+

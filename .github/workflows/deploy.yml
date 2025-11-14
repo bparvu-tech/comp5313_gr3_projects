@@ -1,0 +1,99 @@
+name: Deploy to PythonAnywhere
+
+on:
+  push:
+    branches:
+      - feat/deployment
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Deploy to PythonAnywhere
+        env:
+          PYTHONANYWHERE_USERNAME: ${{ secrets.PYTHONANYWHERE_USERNAME }}
+          PYTHONANYWHERE_API_TOKEN: ${{ secrets.PYTHONANYWHERE_API_TOKEN }}
+          PYTHONANYWHERE_DOMAIN: ${{ secrets.PYTHONANYWHERE_DOMAIN }}
+        run: |
+          # Install required tools
+          pip install requests
+          
+          # Create deployment script
+          cat > deploy_script.py << 'DEPLOY_EOF'
+          import requests
+          import os
+          import sys
+          
+          username = os.environ['PYTHONANYWHERE_USERNAME']
+          token = os.environ['PYTHONANYWHERE_API_TOKEN']
+          domain = os.environ['PYTHONANYWHERE_DOMAIN']
+          
+          api_base = f'https://www.pythonanywhere.com/api/v0/user/{username}'
+          headers = {'Authorization': f'Token {token}'}
+          
+          print("🚀 Starting deployment to PythonAnywhere...")
+          
+          # Step 1: Pull latest code from GitHub
+          print("📥 Pulling latest code from GitHub...")
+          response = requests.post(
+              f'{api_base}/consoles/bash/send_input',
+              headers=headers,
+              json={'input': 'cd ~/comp5313_gr3_projects && git pull origin feat/deployment\n'}
+          )
+          
+          if response.status_code == 200:
+              print("✓ Code pulled successfully")
+          else:
+              print(f"✗ Failed to pull code: {response.status_code}")
+              print(response.text)
+          
+          # Step 2: Install dependencies
+          print("📦 Installing dependencies...")
+          response = requests.post(
+              f'{api_base}/consoles/bash/send_input',
+              headers=headers,
+              json={'input': 'cd ~/comp5313_gr3_projects/backend && pip install -r requirements.txt --user\n'}
+          )
+          
+          if response.status_code == 200:
+              print("✓ Dependencies installed")
+          else:
+              print(f"✗ Failed to install dependencies: {response.status_code}")
+          
+          # Step 3: Reload web app
+          print("🔄 Reloading web app...")
+          response = requests.post(
+              f'{api_base}/webapps/{domain}/reload/',
+              headers=headers
+          )
+          
+          if response.status_code == 200:
+              print("✓ Web app reloaded successfully")
+              print(f"🎉 Deployment complete! Visit: https://{domain}")
+          else:
+              print(f"✗ Failed to reload web app: {response.status_code}")
+              print(response.text)
+              sys.exit(1)
+          
+          DEPLOY_EOF
+          
+          # Run deployment
+          python deploy_script.py
+      
+      - name: Deployment Status
+        if: success()
+        run: |
+          echo "✅ Deployment successful!"
+          echo "Your chatbot is now live at: https://${{ secrets.PYTHONANYWHERE_DOMAIN }}"
+      
+      - name: Deployment Failed
+        if: failure()
+        run: |
+          echo "❌ Deployment failed. Please check the logs above."
+          exit 1
+
