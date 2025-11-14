@@ -1,0 +1,39 @@
+name: Tests and Linting
+
+on:
+  push:
+    branches: [ main, develop, fix/*, feature/* ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          pip install pylint autopep8
+      
+      - name: Run pylint
+        run: |
+          cd backend
+          pylint app/ --fail-under=8.0 || true
+          echo "Pylint check completed"
+      
+      - name: Check Python formatting
+        run: |
+          cd backend
+          autopep8 --diff --aggressive app/ || true
+          echo "Format check completed"
+

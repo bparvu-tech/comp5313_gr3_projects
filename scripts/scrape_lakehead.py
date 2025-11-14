@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Comprehensive web crawler for Lakehead University websites.
+"""Comprehensive recursive web scraper for ALL Lakehead University pages.
 
-This script recursively crawls and scrapes all pages from Lakehead University
-domains (lakeheadu.ca and csdc.lakeheadu.ca), discovering links and extracting
-content-rich pages while filtering out low-value pages.
+This scraper recursively crawls and discovers all pages across Lakehead University
+domains, with improved FAQ extraction and comprehensive content capture.
 """
 
 import hashlib
@@ -14,317 +13,78 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 from heapq import heappush, heappop
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 from urllib.parse import urljoin, urlparse
 
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString, Tag
 
 
-class LakeheadScraper:
-    """Scraper for Lakehead University website."""
+class ComprehensiveLakeheadScraper:
+    """Comprehensive scraper with recursive crawling and improved FAQ extraction."""
 
     BASE_URL = "https://www.lakeheadu.ca"
     CATALOG_URL = "https://csdc.lakeheadu.ca"
     LUSU_URL = "https://lusu.ca"
     OUTPUT_DIR = Path(__file__).parent.parent / "data" / "lakehead_scraped"
 
-    # Sitemap URLs to discover more pages
+    # Sitemaps for URL discovery
     SITEMAPS = [
         "https://www.lakeheadu.ca/sitemap.xml",
         "https://www.lakeheadu.ca/robots.txt",
         "https://csdc.lakeheadu.ca/sitemap.xml",
         "https://lusu.ca/sitemap.xml",
-        "https://lusu.ca/robots.txt"
     ]
 
-    # Sections to scrape - Comprehensive list of official Lakehead University websites
-    SECTIONS = {
-        # Main Website Pages
-        "home": {
-            "url": "https://www.lakeheadu.ca",
-            "description": "Lakehead University homepage"
-        },
-        "about": {
-            "url": "https://www.lakeheadu.ca/about",
-            "description": "About Lakehead University"
-        },
-
-        # Future Students
-        "future_students": {
-            "url": "https://www.lakeheadu.ca/future-students",
-            "description": "Information for prospective students"
-        },
-        "programs": {
-            "url": "https://www.lakeheadu.ca/future-students/programs",
-            "description": "Academic programs offered at Lakehead University"
-        },
-        "admissions": {
-            "url": "https://www.lakeheadu.ca/future-students/admissions",
-            "description": "Admissions information for prospective students"
-        },
-        "application_process": {
-            "url": "https://www.lakeheadu.ca/future-students/how-to-apply",
-            "description": "How to apply to Lakehead University"
-        },
-        "scholarships": {
-            "url": "https://www.lakeheadu.ca/future-students/scholarships-and-awards",
-            "description": "Scholarships and financial awards"
-        },
-        "international_students": {
-            "url": "https://www.lakeheadu.ca/future-students/international",
-            "description": "International student information"
-        },
-        "transfer_credits": {
-            "url": "https://www.lakeheadu.ca/future-students/transfer-credits",
-            "description": "Transfer credit information"
-        },
-
-        # Tuition and Fees
-        "tuition_fees": {
-            "url": "https://www.lakeheadu.ca/future-students/tuition-and-fees",
-            "description": "Tuition and fees information"
-        },
-
-        # Academic Information
-        "academics": {
-            "url": "https://www.lakeheadu.ca/academics",
-            "description": "Academic programs and departments"
-        },
-        "faculties": {
-            "url": "https://www.lakeheadu.ca/faculties",
-            "description": "Faculties and departments"
-        },
-
-        # Academic Calendar (CSDC)
-        "academic_calendar": {
-            "url": "https://csdc.lakeheadu.ca/Catalog/ViewCatalog.aspx",
-            "description": "Official academic calendar and course catalog"
-        },
-
-        # Campuses
-        "thunder_bay": {
-            "url": "https://www.lakeheadu.ca/about/our-campus/thunder-bay",
-            "description": "Thunder Bay campus information"
-        },
-        "orillia": {
-            "url": "https://www.lakeheadu.ca/about/our-campus/orillia",
-            "description": "Orillia campus information"
-        },
-
-        # Student Services
-        "current_students": {
-            "url": "https://www.lakeheadu.ca/student-central",
-            "description": "Current student services and information"
-        },
-        "registration": {
-            "url": "https://www.lakeheadu.ca/studentcentral/registration",
-            "description": "Registration information for students"
-        },
-        "student_services": {
-            "url": "https://www.lakeheadu.ca/student-life",
-            "description": "Student services and support"
-        },
-        "library": {
-            "url": "https://library.lakeheadu.ca",
-            "description": "Lakehead University library"
-        },
-
-        # Financial Information
-        "financial_aid": {
-            "url": "https://www.lakeheadu.ca/studentcentral/fees-and-finances",
-            "description": "Financial aid and payment information"
-        },
-
-        # Student Life
-        "campus_life": {
-            "url": "https://www.lakeheadu.ca/student-life/campus-life",
-            "description": "Campus life and activities"
-        },
-        "housing": {
-            "url": "https://www.lakeheadu.ca/student-life/housing",
-            "description": "Housing and residence information"
-        },
-        "athletics": {
-            "url": "https://www.lakeheadu.ca/student-life/athletics",
-            "description": "Athletics and recreation"
-        },
-
-        # Research
-        "research": {
-            "url": "https://www.lakeheadu.ca/research",
-            "description": "Research activities and opportunities"
-        },
-        "research_centers": {
-            "url": "https://www.lakeheadu.ca/research/research-centres-and-institutes",
-            "description": "Research centres and institutes"
-        },
-
-        # Alumni and Giving
-        "alumni": {
-            "url": "https://www.lakeheadu.ca/alumni",
-            "description": "Alumni information and services"
-        },
-        "giving": {
-            "url": "https://www.lakeheadu.ca/giving",
-            "description": "Supporting Lakehead University"
-        },
-
-        # News and Events
-        "news": {
-            "url": "https://www.lakeheadu.ca/news",
-            "description": "University news and announcements"
-        },
-        "events": {
-            "url": "https://www.lakeheadu.ca/events",
-            "description": "University events and activities"
-        },
-
-        # FAQ (High Priority)
-        "faq": {
-            "url": "https://www.lakeheadu.ca/studentcentral/faq",
-            "description": "Frequently Asked Questions",
-            "priority": 1
-        },
-
-        # Academic Calendar & Important Dates (High Priority)
-        "important_dates": {
-            "url": "https://csdc.lakeheadu.ca/Catalog/ViewCatalog.aspx?pageid=viewcatalog&catalogid=33&topicgroupid=37447",
-            "description": "Academic calendar and important dates",
-            "priority": 1
-        },
-
-        # Residence & Housing (High Priority - Non-Academic)
-        "residence_tb": {
-            "url": "https://www.lakeheadu.ca/student-life/housing/thunder-bay",
-            "description": "Thunder Bay residence information",
-            "priority": 1
-        },
-        "residence_orillia": {
-            "url": "https://www.lakeheadu.ca/student-life/housing/orillia",
-            "description": "Orillia residence information",
-            "priority": 1
-        },
-        "meal_plans": {
-            "url": "https://www.lakeheadu.ca/student-life/dining",
-            "description": "Meal plans and dining services",
-            "priority": 1
-        },
-
-        # LUSU Services (High Priority - Separate Domain)
-        "lusu_home": {
-            "url": "https://lusu.ca",
-            "description": "Lakehead University Student Union homepage",
-            "priority": 1
-        },
-        "lusu_health_dental": {
-            "url": "https://lusu.ca/services-support/health-dental-plan",
-            "description": "LUSU Health and Dental Plan",
-            "priority": 1
-        },
-        "lusu_bus_passes": {
-            "url": "https://lusu.ca/services-support/bus-passes",
-            "description": "LUSU Bus Passes",
-            "priority": 1
-        },
-        "lusu_funding": {
-            "url": "https://lusu.ca/services-support/funding",
-            "description": "LUSU Funding and Grants",
-            "priority": 1
-        },
-        "lusu_clubs": {
-            "url": "https://lusu.ca/clubs",
-            "description": "LUSU Student Clubs",
-            "priority": 1
-        },
-
-        # Health & Wellness Services (High Priority)
-        "health_wellness": {
-            "url": "https://www.lakeheadu.ca/student-life/health-wellness",
-            "description": "Health and wellness services",
-            "priority": 1
-        },
-        "health_clinic": {
-            "url": "https://www.lakeheadu.ca/student-life/student-health-and-wellness",
-            "description": "Student health clinic",
-            "priority": 1
-        },
-
-        # Student Services (High Priority)
-        "career_services": {
-            "url": "https://www.lakeheadu.ca/student-life/career-services",
-            "description": "Career services and co-op",
-            "priority": 2
-        },
-        "accessibility_services": {
-            "url": "https://www.lakeheadu.ca/studentcentral/accessibility-services",
-            "description": "Accessibility services",
-            "priority": 2
-        },
-        "international_services": {
-            "url": "https://www.lakeheadu.ca/student-life/international",
-            "description": "International student services",
-            "priority": 2
-        },
-        "student_success": {
-            "url": "https://www.lakeheadu.ca/studentcentral/student-success-centre",
-            "description": "Student Success Centre",
-            "priority": 2
-        },
-
-        # Policies (High Priority)
-        "academic_policies": {
-            "url": "https://www.lakeheadu.ca/studentcentral/policies",
-            "description": "Academic policies",
-            "priority": 2
-        },
-
-        # Campus Resources
-        "parking": {
-            "url": "https://www.lakeheadu.ca/about/parking",
-            "description": "Parking information",
-            "priority": 3
-        },
-        "bookstore": {
-            "url": "https://www.lakeheadu.ca/student-life/bookstore",
-            "description": "Campus bookstore",
-            "priority": 3
-        }
-    }
+    # Seed URLs to start crawling
+    SEED_URLS = [
+        "https://www.lakeheadu.ca",
+        "https://www.lakeheadu.ca/programs",
+        "https://www.lakeheadu.ca/programs/departments/computer-science",
+        "https://www.lakeheadu.ca/future-students",
+        "https://www.lakeheadu.ca/student-life",
+        "https://www.lakeheadu.ca/studentcentral",
+        "https://csdc.lakeheadu.ca/Catalog/ViewCatalog.aspx",
+        "https://lusu.ca",
+    ]
 
     def __init__(self, delay: float = 1.0, resume: bool = False):
-        """Initialize the scraper.
+        """Initialize the comprehensive scraper.
 
         Args:
-            delay: Delay between requests in seconds (for rate limiting)
+            delay: Delay between requests in seconds
             resume: Whether to resume from previous crawl state
         """
         self.delay = delay
         self.session = requests.Session()
         self.session.headers.update({
-            'User-Agent': 'Lakehead Chatbot Scraper 1.0'
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+                         'AppleWebKit/537.36 (KHTML, like Gecko) '
+                         'Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
         })
 
-        # Create output directory
         self.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-        # Crawler state tracking
+        # Crawler state
         self.visited_urls: Set[str] = set()
         self.discovered_urls: Set[str] = set()
         self.failed_urls: Set[str] = set()
         self.content_hashes: Set[str] = set()
-        self.url_queue = []  # Priority queue: list of (priority, url) tuples
+        self.url_queue = []  # Priority queue: (priority, url)
+
         self.statistics = {
             'pages_scraped': 0,
             'pages_skipped': 0,
             'pages_failed': 0,
+            'faq_items_found': 0,
             'links_discovered': 0,
             'start_time': None,
             'end_time': None,
-            'by_tier': {1: 0, 2: 0, 3: 0}  # Pages scraped by tier
+            'by_priority': {1: 0, 2: 0, 3: 0}
         }
 
-        # Load previous state if resuming
         if resume:
             self.load_crawler_state()
 
@@ -341,23 +101,26 @@ class LakeheadScraper:
             parsed = urlparse(url)
             domain = parsed.netloc.lower()
 
-            # Must be Lakehead domain or LUSU domain
-            if not (domain.endswith('lakeheadu.ca') or 'csdc.lakeheadu.ca' in domain or domain == 'lusu.ca' or domain.endswith('.lusu.ca')):
+            # Must be Lakehead or LUSU domain
+            if not (domain.endswith('lakeheadu.ca') or domain == 'lusu.ca' or
+                   domain.endswith('.lusu.ca')):
                 return False
 
             # Exclude file downloads
-            exclude_extensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.zip',
+            exclude_ext = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.zip',
                                 '.rar', '.tar', '.gz', '.mp3', '.mp4', '.avi',
-                                '.jpg', '.jpeg', '.png', '.gif']
-            if any(url.lower().endswith(ext) for ext in exclude_extensions):
+                          '.jpg', '.jpeg', '.png', '.gif', '.svg', '.ico']
+            if any(url.lower().endswith(ext) for ext in exclude_ext):
                 return False
 
-            # Exclude mailto, tel, javascript links
-            if any(url.startswith(prefix) for prefix in ['mailto:', 'tel:', 'javascript:', '#']):
+            # Exclude special links
+            if any(url.startswith(prefix) for prefix in
+                  ['mailto:', 'tel:', 'javascript:', '#', 'data:']):
                 return False
 
-            # Exclude login/logout pages
-            if any(term in url.lower() for term in ['/login', '/logout', '/signin', '/signout']):
+            # Exclude login/admin pages
+            if any(term in url.lower() for term in
+                  ['/login', '/logout', '/signin', '/signout', '/admin', '/user/password']):
                 return False
 
             return True
@@ -365,106 +128,8 @@ class LakeheadScraper:
         except Exception:
             return False
 
-    def calculate_content_quality(self, soup: BeautifulSoup) -> Dict:
-        """Calculate quality metrics for page content.
-
-        Args:
-            soup: BeautifulSoup object
-
-        Returns:
-            Dictionary with quality metrics
-        """
-        # Extract text
-        text_content = soup.get_text()
-        word_count = len(text_content.split())
-
-        # Count headings
-        headings = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
-
-        # Count links
-        links = soup.find_all('a', href=True)
-
-        # Calculate quality score
-        quality_score = word_count * 0.5 + len(headings) * 10 + min(len(links), 50)
-
-        return {
-            'word_count': word_count,
-            'heading_count': len(headings),
-            'link_count': len(links),
-            'quality_score': quality_score
-        }
-
-    def should_scrape_page(self, soup: BeautifulSoup, _url: str) -> bool:
-        """Determine if page should be scraped based on content.
-
-        Args:
-            soup: BeautifulSoup object
-            _url: URL of the page (unused but kept for signature)
-
-        Returns:
-            True if page should be scraped
-        """
-        quality = self.calculate_content_quality(soup)
-
-        # Skip pages with too little content
-        if quality['word_count'] < 50:
-            return False
-
-        # Skip if too many links relative to content (navigation page)
-        if quality['link_count'] > 0 and quality['word_count'] / quality['link_count'] < 3:
-            return False
-
-        return True
-
-    def is_duplicate_content(self, content_hash: str) -> bool:
-        """Check if content is duplicate.
-
-        Args:
-            content_hash: Hash of content
-
-        Returns:
-            True if content is duplicate
-        """
-        if content_hash in self.content_hashes:
-            return True
-
-        self.content_hashes.add(content_hash)
-        return False
-
-    def fetch_page(self, url: str) -> Optional[BeautifulSoup]:
-        """Fetch and parse a webpage.
-
-        Args:
-            url: URL to fetch
-
-        Returns:
-            BeautifulSoup object or None if request fails
-        """
-        try:
-            print(f"Fetching: {url}")
-            response = self.session.get(url, timeout=10)
-            response.raise_for_status()
-            return BeautifulSoup(response.content, 'html.parser')
-        except requests.RequestException as e:
-            print(f"Error fetching {url}: {e}")
-            return None
-
-    def clean_text(self, text: str) -> str:
-        """Clean and normalize text content.
-
-        Args:
-            text: Raw text to clean
-
-        Returns:
-            Cleaned text
-        """
-        # Remove extra whitespace and normalize line breaks
-        text = re.sub(r'\s+', ' ', text)
-        text = re.sub(r'\n\s*\n', '\n\n', text)
-        return text.strip()
-
     def prioritize_url(self, url: str) -> int:
-        """Assign priority to URL (lower number = higher priority).
+        """Assign priority to URL (lower = higher priority).
 
         Args:
             url: URL to prioritize
@@ -474,293 +139,416 @@ class LakeheadScraper:
         """
         url_lower = url.lower()
 
-        # Tier 1 (Highest Priority)
-        if '/faq' in url_lower:
+        # Tier 1: High-value content
+        if any(term in url_lower for term in
+              ['/faq', '/frequently-asked', 'important-dates', 'calendar']):
             return 1
-        elif '/Catalog/' in url_lower and ('Course' in url or 'entitytype=Course' in url):
+        if '/programs/' in url_lower or '/departments/' in url_lower:
             return 1
-        elif '/housing' in url_lower or '/residence' in url_lower:
+        if any(term in url_lower for term in
+              ['admissions', 'tuition', 'fees', 'scholarships']):
             return 1
-        elif '/dining' in url_lower or 'meal' in url_lower:
+        if any(term in url_lower for term in
+              ['housing', 'residence', 'dining', 'meal']):
             return 1
-        elif 'lusu.ca' in url_lower:
-            return 1
-        elif '/health' in url_lower or '/wellness' in url_lower:
-            return 1
-        elif 'important-dates' in url_lower or 'calendar' in url_lower:
+        if 'lusu.ca' in url_lower:
             return 1
 
-        # Tier 2 (Medium Priority)
-        elif '/Catalog/' in url_lower:
+        # Tier 2: Medium-value content
+        if any(term in url_lower for term in
+              ['student', 'service', 'career', 'health', 'wellness']):
             return 2
-        elif '/polic' in url_lower:
+        if '/Catalog/' in url_lower:
             return 2
-        elif '/career' in url_lower:
-            return 2
-        elif '/accessibility' in url_lower:
-            return 2
-        elif '/student-success' in url_lower:
-            return 2
-        elif '/programs/' in url_lower:
+        if any(term in url_lower for term in
+              ['accessibility', 'international', 'policy', 'polic']):
             return 2
 
-        # Tier 3 (Lowest Priority - everything else)
-        else:
-            return 3
+        # Tier 3: General content
+        return 3
 
-    def detect_page_type(self, url: str, _soup: BeautifulSoup) -> str:
-        """Detect page type based on URL patterns and content.
+    def clean_text(self, text: str) -> str:
+        """Clean and normalize text.
 
         Args:
-            url: URL of the page
-            soup: BeautifulSoup object
+            text: Raw text
 
         Returns:
-            Page type string
+            Cleaned text
         """
-        url_lower = url.lower()
+        text = re.sub(r'[ \t]+', ' ', text)
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        lines = [line.strip() for line in text.split('\n')]
+        return '\n'.join(lines).strip()
 
-        if '/Catalog/' in url_lower and ('entitytype=Course' in url_lower or 'Course' in url):
-            return 'course'
-        elif '/faq' in url_lower:
-            return 'faq'
-        elif '/programs/' in url_lower:
-            return 'program'
-        elif '/polic' in url_lower:
-            return 'policy'
-        elif '/housing' in url_lower or '/residence' in url_lower:
-            return 'residence'
-        elif '/dining' in url_lower or 'meal' in url_lower:
-            return 'meal_plan'
-        elif 'lusu.ca' in url_lower:
-            return 'lusu_service'
-        elif '/health' in url_lower or '/wellness' in url_lower:
-            return 'health_service'
-        elif '/tuition' in url_lower or '/fee' in url_lower or '/financial' in url_lower:
-            return 'financial'
-        elif '/career' in url_lower:
-            return 'service'
-        else:
-            return 'generic'
-
-    def extract_course_data(self, soup: BeautifulSoup, _url: str) -> dict:
-        """Extract structured course information.
+    def extract_faq_content(self, soup: BeautifulSoup) -> List[Tuple[str, str]]:
+        """Extract FAQ questions and answers.
 
         Args:
             soup: BeautifulSoup object
-            url: Source URL
 
         Returns:
-            Dictionary with course data
+            List of (question, answer) tuples
         """
-        course_data = {
-            'course_code': '',
-            'course_title': '',
-            'credits': '',
-            'prerequisites': [],
-            'description': '',
-            'restrictions': '',
-            'offered': '',
-            'department': '',
-            'faculty': ''
+        faq_items = []
+
+        # Find main content area
+        main_container = (
+            soup.find('div', class_=re.compile(r'field-name-body', re.I)) or
+            soup.find('article') or
+            soup.find('div', class_=re.compile(r'l-main|main-content', re.I)) or
+            soup.find('main') or
+            soup.find('div', {'role': 'main'}) or
+            soup.find('body')
+        )
+
+        if not main_container:
+            return faq_items
+
+        # Remove navigation, sidebars, footers
+        for unwanted in main_container.find_all(['nav', 'aside', 'footer', 'header']):
+            unwanted.decompose()
+        for unwanted in main_container.find_all('div',
+                class_=re.compile(r'sidebar|navigation|menu|footer', re.I)):
+            unwanted.decompose()
+
+        # Strategy 1: <p><strong>Number. Question</strong></p> pattern
+        paragraphs = main_container.find_all('p')
+
+        for p in paragraphs:
+            strong = p.find('strong')
+            if strong:
+                strong_text = self.clean_text(strong.get_text())
+                match = re.match(r'^(\d+)\.\s+(.+)$', strong_text)
+
+                if match:
+                    question_text = match.group(2)
+                    answer_parts = []
+                    current = p.find_next_sibling()
+
+                    # Collect answer until next question
+                    while current:
+                        if current.name == 'p':
+                            next_strong = current.find('strong')
+                            if next_strong:
+                                next_text = self.clean_text(next_strong.get_text())
+                                if re.match(r'^\d+\.\s+', next_text):
+                                    break
+
+                            text = self.clean_text(current.get_text())
+                            if text and len(text) > 5:
+                                answer_parts.append(text)
+
+                        elif current.name in ['ul', 'ol']:
+                            items = current.find_all('li', recursive=False)
+                            for item in items:
+                                item_text = self.clean_text(item.get_text())
+                                if item_text:
+                                    answer_parts.append(f"• {item_text}")
+
+                        elif current.name in ['div', 'section']:
+                            div_strong = current.find('strong')
+                            if div_strong and re.match(r'^\d+\.\s+',
+                                    self.clean_text(div_strong.get_text())):
+                                break
+
+                            text = self.clean_text(current.get_text())
+                            if text and len(text) > 10:
+                                answer_parts.append(text)
+
+                        current = current.find_next_sibling()
+
+                    if answer_parts:
+                        answer = '\n\n'.join(answer_parts)
+                        if len(answer) > 20:
+                            faq_items.append((question_text, answer))
+
+        # Strategy 2: Heading-based FAQs
+        if not faq_items:
+            headings = main_container.find_all(['h2', 'h3', 'h4'])
+            for heading in headings:
+                h_text = self.clean_text(heading.get_text())
+
+                if not h_text or len(h_text) < 5:
+                    continue
+                if any(skip in h_text.lower() for skip in
+                      ['contact', 'navigation', 'menu', 'search', 'hours:', 'address:']):
+                    continue
+
+                content_parts = []
+                for sibling in heading.find_next_siblings():
+                    if sibling.name in ['h1', 'h2', 'h3']:
+                        break
+
+                    text = self.clean_text(sibling.get_text())
+                    if text and len(text) > 10:
+                        if sibling.name in ['ul', 'ol']:
+                            items = sibling.find_all('li')
+                            for item in items:
+                                item_text = self.clean_text(item.get_text())
+                                if item_text:
+                                    content_parts.append(f"• {item_text}")
+                        else:
+                            content_parts.append(text)
+
+                if content_parts:
+                    answer = '\n\n'.join(content_parts)
+                    if len(answer) > 50:
+                        faq_items.append((h_text, answer))
+
+        return faq_items
+
+    def extract_structured_content(self, soup: BeautifulSoup) -> Dict:
+        """Extract comprehensive structured content.
+
+        Args:
+            soup: BeautifulSoup object
+
+        Returns:
+            Dictionary with structured content
+        """
+        content = {
+            'sections': [],
+            'lists': [],
+            'tables': [],
+            'links': [],
+            'contact_info': {}
         }
 
-        # Try to extract course code and title from page
-        title_elem = soup.find('h1') or soup.find('title')
-        if title_elem:
-            title_text = self.clean_text(title_elem.get_text())
-            # Try to parse course code from title (e.g., "COMP 1010 - Introduction to...")
-            code_match = re.search(r'([A-Z]{2,4})\s+(\d{4})', title_text)
-            if code_match:
-                course_data['course_code'] = f"{code_match.group(1)} {code_match.group(2)}"
-                course_data['course_title'] = title_text.replace(course_data['course_code'], '').strip(' -')
-            else:
-                course_data['course_title'] = title_text
+        main = (
+            soup.find('div', class_=re.compile(r'field-name-body', re.I)) or
+            soup.find('main') or
+            soup.find('article') or
+            soup.find('div', {'role': 'main'}) or
+            soup.find('div', class_=re.compile(r'main|content', re.I))
+        )
 
-        # Extract main content
-        main_content = soup.find('main') or soup.find('article') or soup.find('div', class_='content')
-        if main_content:
-            text = self.clean_text(main_content.get_text())
-            course_data['description'] = text[:2000]  # Limit description length
+        if not main:
+            return content
 
-            # Look for prerequisites
-            prereq_match = re.search(r'prerequisite[s]?[:\s]+([^.]+)', text, re.I)
-            if prereq_match:
-                prereqs = prereq_match.group(1).split(',')
-                course_data['prerequisites'] = [p.strip() for p in prereqs]
+        # Remove unwanted elements
+        for unwanted in main.find_all(['script', 'style', 'nav', 'footer']):
+            unwanted.decompose()
 
-            # Look for credits
-            credit_match = re.search(r'((\d+\.?\d*)\s*(FCE|credit[s]?))', text, re.I)
-            if credit_match:
-                course_data['credits'] = credit_match.group(0)
+        # Extract sections with headings
+        for heading in main.find_all(['h1', 'h2', 'h3', 'h4']):
+            h_text = self.clean_text(heading.get_text())
+            if not h_text or len(h_text) < 3:
+                continue
 
-        return course_data
+            section_content = []
+            for sibling in heading.find_next_siblings():
+                if sibling.name in ['h1', 'h2', 'h3', 'h4']:
+                    break
+                text = self.clean_text(sibling.get_text())
+                if text and len(text) > 10:
+                    section_content.append(text)
 
-    def extract_tables(self, soup: BeautifulSoup) -> List[dict]:
-        """Extract and structure HTML tables.
+            if section_content:
+                content['sections'].append({
+                    'heading': h_text,
+                    'level': heading.name,
+                    'content': '\n\n'.join(section_content)
+                })
 
-        Args:
-            soup: BeautifulSoup object
+        # Extract lists
+        for ul in main.find_all(['ul', 'ol']):
+            items = []
+            for li in ul.find_all('li', recursive=False):
+                text = self.clean_text(li.get_text())
+                if text:
+                    items.append(text)
+            if items and len(items) >= 2:
+                content['lists'].append({'type': ul.name, 'items': items})
 
-        Returns:
-            List of table dictionaries
-        """
-        tables_data = []
+        # Extract tables
+        for table in main.find_all('table'):
+            table_data = {'headers': [], 'rows': []}
 
-        for table in soup.find_all('table'):
-            table_data = {
-                'headers': [],
-                'rows': []
-            }
-
-            # Extract headers
             headers = table.find_all('th')
             if headers:
                 table_data['headers'] = [self.clean_text(h.get_text()) for h in headers]
 
-            # Extract rows
-            rows = table.find_all('tr')
-            for row in rows:
+            for row in table.find_all('tr'):
                 cells = row.find_all(['td', 'th'])
                 if cells:
                     row_data = [self.clean_text(cell.get_text()) for cell in cells]
-                    table_data['rows'].append(row_data)
+                    if any(row_data):
+                        table_data['rows'].append(row_data)
 
             if table_data['rows']:
-                tables_data.append(table_data)
-
-        return tables_data
-
-    def extract_metadata(self, soup: BeautifulSoup, _url: str) -> dict:
-        """Extract important metadata from page.
-
-        Args:
-            soup: BeautifulSoup object
-            url: Source URL
-
-        Returns:
-            Dictionary with metadata
-        """
-        text = soup.get_text()
-
-        # Extract dates
-        date_pattern = r'\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b'
-        dates = re.findall(date_pattern, text, re.I)
-
-        # Extract deadlines (dates with "deadline", "due", etc.)
-        deadline_pattern = r'(deadline|due|date)[:\s]+(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}'
-        deadlines = re.findall(deadline_pattern, text, re.I)
-
-        # Extract emails
-        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
-        emails = re.findall(email_pattern, text)
-
-        # Extract phone numbers (basic pattern)
-        phone_pattern = r'\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b'
-        phones = re.findall(phone_pattern, text)
-
-        # Extract amounts (money)
-        amount_pattern = r'\$\d+(?:,\d{3})*(?:\.\d{2})?'
-        amounts = re.findall(amount_pattern, text)
+                content['tables'].append(table_data)
 
         # Extract links
-        links = []
-        for link in soup.find_all('a', href=True):
-            href = link.get('href', '')
-            text_link = self.clean_text(link.get_text())
-            if href.startswith('http'):
-                links.append({'text': text_link, 'url': href})
+        for link in main.find_all('a', href=True):
+            href = link.get('href')
+            text = self.clean_text(link.get_text())
+            if text and href and not href.startswith('#'):
+                absolute_url = urljoin(self.BASE_URL, href)
+                if len(content['links']) < 50:
+                    content['links'].append({'text': text, 'url': absolute_url})
 
-        return {
-            'dates': dates[:20],  # Limit to 20 dates
-            'deadlines': deadlines[:10],
-            'contacts': {
-                'emails': list(set(emails))[:10],
-                'phones': list(set(phones))[:10]
-            },
-            'amounts': amounts[:20],
-            'links': links[:30]
-        }
+        # Extract contact information
+        text_content = main.get_text()
 
-    def extract_content(self, soup: BeautifulSoup, url: str) -> dict:
-        """Extract main content from a webpage with page type detection.
+        emails = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
+                           text_content)
+        if emails:
+            content['contact_info']['emails'] = list(set(emails))[:5]
+
+        phones = re.findall(r'\+?1?\s*\(?(\d{3})\)?[-.\s]?(\d{3})[-.\s]?(\d{4})',
+                           text_content)
+        if phones:
+            content['contact_info']['phones'] = [
+                f"({p[0]}) {p[1]}-{p[2]}" for p in phones[:5]
+            ]
+
+        return content
+
+    def generate_markdown(self, url: str, title: str, faq_items: List[Tuple[str, str]],
+                         content: Dict) -> str:
+        """Generate comprehensive markdown.
+
+        Args:
+            url: Source URL
+            title: Page title
+            faq_items: List of (question, answer) tuples
+            content: Structured content dictionary
+
+        Returns:
+            Markdown string
+        """
+        md_lines = []
+
+        # Header
+        md_lines.append(f"# {title}")
+        md_lines.append("")
+        md_lines.append(f"**URL:** {url}")
+        md_lines.append(f"**Scraped:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        md_lines.append("")
+        md_lines.append("---")
+        md_lines.append("")
+
+        # FAQ section
+        if faq_items:
+            md_lines.append("## Frequently Asked Questions")
+            md_lines.append("")
+            for i, (question, answer) in enumerate(faq_items, 1):
+                md_lines.append(f"### {i}. {question}")
+                md_lines.append("")
+                md_lines.append(answer)
+                md_lines.append("")
+
+        # Content sections
+        if content.get('sections'):
+            if faq_items:
+                md_lines.append("## Additional Content")
+            else:
+                md_lines.append("## Content")
+            md_lines.append("")
+
+            for section in content['sections'][:30]:
+                level = int(section['level'][1])
+                prefix = '#' * (level + 1)
+                md_lines.append(f"{prefix} {section['heading']}")
+                md_lines.append("")
+                md_lines.append(section['content'][:2000])
+                md_lines.append("")
+
+        # Lists
+        if content.get('lists'):
+            md_lines.append("## Key Information")
+            md_lines.append("")
+            for list_data in content['lists'][:10]:
+                for item in list_data['items'][:20]:
+                    md_lines.append(f"- {item}")
+                md_lines.append("")
+
+        # Tables
+        if content.get('tables'):
+            md_lines.append("## Tables")
+            md_lines.append("")
+            for table in content['tables'][:5]:
+                if table['headers']:
+                    md_lines.append("| " + " | ".join(table['headers']) + " |")
+                    md_lines.append("| " + " | ".join(['---'] * len(table['headers'])) + " |")
+
+                for row in table['rows'][:20]:
+                    md_lines.append("| " + " | ".join(row) + " |")
+                md_lines.append("")
+
+        # Contact info
+        if content.get('contact_info'):
+            contact = content['contact_info']
+            if contact.get('phones') or contact.get('emails'):
+                md_lines.append("## Contact Information")
+                md_lines.append("")
+
+                if contact.get('phones'):
+                    md_lines.append("**Phone:**")
+                    for phone in contact['phones']:
+                        md_lines.append(f"- {phone}")
+                    md_lines.append("")
+
+                if contact.get('emails'):
+                    md_lines.append("**Email:**")
+                    for email in contact['emails']:
+                        md_lines.append(f"- {email}")
+                    md_lines.append("")
+
+        # Related links
+        if content.get('links'):
+            md_lines.append("## Related Links")
+            md_lines.append("")
+            for link in content['links'][:30]:
+                md_lines.append(f"- [{link['text']}]({link['url']})")
+            md_lines.append("")
+
+        return '\n'.join(md_lines)
+
+    def fetch_page(self, url: str) -> Optional[BeautifulSoup]:
+        """Fetch and parse a webpage.
+
+        Args:
+            url: URL to fetch
+
+        Returns:
+            BeautifulSoup object or None
+        """
+        try:
+            response = self.session.get(url, timeout=20)
+            response.raise_for_status()
+            return BeautifulSoup(response.content, 'html.parser')
+        except requests.RequestException as e:
+            print(f"Error fetching {url}: {e}")
+            return None
+
+    def discover_links_from_page(self, soup: BeautifulSoup, base_url: str) -> List[str]:
+        """Discover all valid links from a page.
 
         Args:
             soup: BeautifulSoup object
-            url: Source URL
+            base_url: Base URL for resolving relative links
 
         Returns:
-            Dictionary with extracted content
+            List of discovered URLs
         """
-        page_type = self.detect_page_type(url, soup)
+        discovered = []
 
-        content = {
-            'url': url,
-            'page_type': page_type,
-            'title': '',
-            'main_content': '',
-            'headings': [],
-            'links': [],
-            'tables': [],
-            'metadata': {}
-        }
-
-        # Extract title
-        if soup.title:
-            content['title'] = soup.title.string.strip() if soup.title.string else ''
-
-        # Remove script and style elements
-        for element in soup(['script', 'style', 'nav', 'footer', 'header']):
-            element.decompose()
-
-        # Extract main content
-        main_content = (
-            soup.find('main') or
-            soup.find('article') or
-            soup.find('div', class_='content') or
-            soup.find('div', id=re.compile(r'(content|main|body|article|text)', re.I)) or
-            soup.find('div', class_=re.compile(r'(content|main|body|article|text)', re.I))
-        )
-
-        if not main_content:
-            content_candidates = []
-            for container in soup.find_all('div'):
-                text = self.clean_text(container.get_text())
-                if len(text) >= 200:
-                    content_candidates.append((len(text), container))
-
-            if content_candidates:
-                main_content = max(content_candidates, key=lambda candidate: candidate[0])[1]
-
-        if main_content:
-            content['main_content'] = self.clean_text(main_content.get_text())
-
-        # Extract headings
-        for heading in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']):
-            heading_text = self.clean_text(heading.get_text())
-            if heading_text:
-                content['headings'].append(heading_text)
-
-        # Extract important links
         for link in soup.find_all('a', href=True):
-            link_url = link.get('href', '')
-            link_text = self.clean_text(link.get_text())
-            if link_text and link_url.startswith('http'):
-                content['links'].append({
-                    'text': link_text,
-                    'url': link_url
-                })
+            href = link.get('href')
+            if not href:
+                continue
 
-        # Extract structured data based on page type
-        if page_type == 'course':
-            course_data = self.extract_course_data(soup, url)
-            content['course_data'] = course_data
-        else:
-            # Extract tables and metadata for all pages
-            content['tables'] = self.extract_tables(soup)
-            content['metadata'] = self.extract_metadata(soup, url)
+            absolute_url = urljoin(base_url, href)
 
-        return content
+            if (self.is_valid_url(absolute_url) and
+                absolute_url not in self.visited_urls and
+                absolute_url not in self.discovered_urls):
+                discovered.append(absolute_url)
+                self.statistics['links_discovered'] += 1
+
+        return discovered
 
     def discover_urls_from_sitemap(self, sitemap_url: str) -> List[str]:
         """Discover URLs from a sitemap.
@@ -778,19 +566,16 @@ class LakeheadScraper:
             response = self.session.get(sitemap_url, timeout=10)
             response.raise_for_status()
 
-            # Check if it's a robots.txt file
             if 'robots.txt' in sitemap_url:
-                # Parse robots.txt to find sitemap references
                 for line in response.text.split('\n'):
                     if line.lower().startswith('sitemap:'):
                         sitemap_url = line.split(':', 1)[1].strip()
                         discovered_urls.extend(self.discover_urls_from_sitemap(sitemap_url))
             else:
-                # Parse XML sitemap
                 root = ET.fromstring(response.content)
                 for url in root.findall('.//{http://www.sitemaps.org/schemas/sitemap/0.9}url'):
                     loc = url.find('{http://www.sitemaps.org/schemas/sitemap/0.9}loc')
-                    if loc is not None:
+                    if loc is not None and self.is_valid_url(loc.text):
                         discovered_urls.append(loc.text)
 
         except Exception as e:
@@ -798,216 +583,134 @@ class LakeheadScraper:
 
         return discovered_urls
 
-    def discover_catalog_pages(self, base_url: str) -> List[dict]:
-        """Discover all pages in the academic catalog.
+    def is_duplicate_content(self, content_hash: str) -> bool:
+        """Check if content is duplicate.
 
         Args:
-            base_url: Base URL of the catalog
+            content_hash: Hash of content
 
         Returns:
-            List of page configurations
+            True if duplicate
         """
-        pages = []
+        if content_hash in self.content_hashes:
+            return True
+        self.content_hashes.add(content_hash)
+        return False
 
-        try:
-            soup = self.fetch_page(base_url)
-            if not soup:
-                return pages
-
-            # Find all navigation links and important pages
-            for link in soup.find_all('a', href=True):
-                href = link.get('href', '')
-                text = link.get_text().strip()
-
-                # Check if it's a catalog page
-                if '/Catalog/' in href or 'ViewCatalog' in href:
-                    url = urljoin(base_url, href)
-
-                    # Avoid duplicates
-                    if url not in [p['url'] for p in pages] and text:
-                        pages.append({
-                            'url': url,
-                            'description': f"Academic catalog page: {text}",
-                            'title': text
-                        })
-
-        except Exception as e:
-            print(f"Error discovering catalog pages: {e}")
-
-        return pages
-
-    def scrape_section(self, section_name: str, section_config: dict) -> str:
-        """Scrape a specific section of the website.
-
-        Args:
-            section_name: Name of the section
-            section_config: Configuration for the section
-
-        Returns:
-            Path to the created markdown file
-        """
-        url = section_config['url']
-        description = section_config['description']
-
-        soup = self.fetch_page(url)
-        if not soup:
-            print(f"Failed to fetch {section_name}")
-            return None
-
-        # Wait between requests
-        time.sleep(self.delay)
-
-        # Extract content
-        content = self.extract_content(soup, url)
-
-        # Generate markdown
-        markdown_content = self.generate_markdown(section_name, description, content)
-
-        # Save to file
-        output_file = self.OUTPUT_DIR / f"{section_name}.md"
-        output_file.write_text(markdown_content, encoding='utf-8')
-
-        print(f"✓ Saved: {output_file}")
-        return str(output_file)
-
-    def generate_markdown(self, section_name: str, description: str, content: dict) -> str:
-        """Generate markdown content from scraped data.
-
-        Args:
-            section_name: Name of the section
-            description: Description of the section
-            content: Extracted content dictionary
-
-        Returns:
-            Markdown formatted string
-        """
-        md_lines = []
-
-        # Header
-        md_lines.append(f"# {content['title'] or section_name.replace('_', ' ').title()}")
-        md_lines.append("")
-        md_lines.append(f"**Source**: {content['url']}")
-        md_lines.append(f"**Description**: {description}")
-        md_lines.append(f"**Scraped**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        md_lines.append("")
-        md_lines.append("---")
-        md_lines.append("")
-
-        # Headings
-        if content['headings']:
-            md_lines.append("## Table of Contents")
-            md_lines.append("")
-            for i, heading in enumerate(content['headings'][:50], 1):  # Limit to first 50
-                clean_heading = heading.strip('#').strip()
-                md_lines.append(f"{i}. {clean_heading}")
-            md_lines.append("")
-
-        # Main content
-        if content['main_content']:
-            # Limit content length (increased to capture more information)
-            main_text = content['main_content'][:20000]  # First 20000 characters
-            if len(content['main_content']) > 20000:
-                main_text += "\n\n*(Content truncated for brevity)*"
-
-            md_lines.append("## Content")
-            md_lines.append("")
-            md_lines.append(main_text)
-            md_lines.append("")
-
-        # Important links
-        if content['links']:
-            md_lines.append("## Related Links")
-            md_lines.append("")
-            for link in content['links'][:30]:  # Limit to first 30
-                md_lines.append(f"- [{link['text']}]({link['url']})")
-            md_lines.append("")
-
-        return '\n'.join(md_lines)
-
-    def scrape_all(self, discover_pages: bool = True) -> List[str]:
-        """Scrape all configured sections.
-
-        Args:
-            discover_pages: Whether to discover additional pages from catalogs
-
-        Returns:
-            List of created file paths
-        """
-        print("Starting comprehensive scrape of Lakehead University website...")
-        print(f"Output directory: {self.OUTPUT_DIR}")
-        print(f"Total sections to scrape: {len(self.SECTIONS)}")
-        print()
-
-        created_files = []
-
-        # First, scrape all configured sections
-        total = len(self.SECTIONS)
-        for idx, (section_name, section_config) in enumerate(self.SECTIONS.items(), 1):
-            try:
-                print(f"[{idx}/{total}] Scraping {section_name}...")
-                file_path = self.scrape_section(section_name, section_config)
-                if file_path:
-                    created_files.append(file_path)
-                time.sleep(self.delay)
-            except Exception as e:
-                print(f"Error scraping {section_name}: {e}")
-
-        # Discover and scrape additional pages
-        if discover_pages:
-            print()
-            print("Discovering additional pages...")
-
-            # Discover catalog pages
-            print("Scanning academic catalog...")
-            catalog_pages = self.discover_catalog_pages(self.CATALOG_URL + "/Catalog/ViewCatalog.aspx")
-
-            if catalog_pages:
-                print(f"Found {len(catalog_pages)} catalog pages to scrape")
-                for page_config in catalog_pages[:20]:  # Limit to first 20 to avoid overwhelming
-                    try:
-                        page_name = page_config.get('title', 'catalog_page').lower().replace(' ', '_')
-                        section_config = {
-                            'url': page_config['url'],
-                            'description': page_config['description']
-                        }
-                        file_path = self.scrape_section(f"catalog_{page_name}", section_config)
-                        if file_path:
-                            created_files.append(file_path)
-                        time.sleep(self.delay)
-                    except Exception as e:
-                        print(f"Error scraping catalog page: {e}")
-
-        return created_files
-
-    def discover_links_from_page(self, soup: BeautifulSoup, base_url: str) -> List[str]:
-        """Discover all links from a page.
+    def should_scrape_page(self, soup: BeautifulSoup) -> bool:
+        """Determine if page should be scraped.
 
         Args:
             soup: BeautifulSoup object
-            base_url: Base URL for resolving relative links
 
         Returns:
-            List of discovered and valid URLs
+            True if page should be scraped
         """
-        discovered = []
+        text = soup.get_text()
+        word_count = len(text.split())
 
-        for link in soup.find_all('a', href=True):
-            href = link.get('href')
-            if not href:
-                continue
+        if word_count < 50:
+            return False
 
-            # Resolve relative URLs
-            absolute_url = urljoin(base_url, href)
+        # Check for actual content
+        main = soup.find(['main', 'article']) or soup.find('div',
+                class_=re.compile(r'content|main', re.I))
+        if main:
+            main_text = main.get_text()
+            if len(main_text.split()) < 30:
+                return False
 
-            # Validate URL
-            if self.is_valid_url(absolute_url) and absolute_url not in self.visited_urls:
-                discovered.append(absolute_url)
-                self.statistics['links_discovered'] += 1
+        return True
 
-        return discovered
+    def generate_filename(self, url: str) -> str:
+        """Generate safe filename from URL.
+
+        Args:
+            url: URL
+
+        Returns:
+            Filename
+        """
+        parsed = urlparse(url)
+        path = parsed.path.strip('/')
+
+        filename = re.sub(r'[^\w\-/]', '_', path)
+        filename = filename.replace('/', '_')
+
+        if not filename:
+            filename = 'index'
+
+        if len(filename) > 100:
+            filename = filename[:100]
+
+        return f"{filename}.md"
+
+    def scrape_page(self, url: str) -> Optional[str]:
+        """Scrape a single page.
+
+        Args:
+            url: URL to scrape
+
+        Returns:
+            Path to saved file or None
+        """
+        if url in self.visited_urls:
+            return None
+
+        self.visited_urls.add(url)
+
+        soup = self.fetch_page(url)
+        if not soup:
+            self.failed_urls.add(url)
+            self.statistics['pages_failed'] += 1
+            return None
+
+        time.sleep(self.delay)
+
+        # Check quality
+        if not self.should_scrape_page(soup):
+            self.statistics['pages_skipped'] += 1
+            return None
+
+        # Check for duplicates
+        content_hash = hashlib.md5(str(soup).encode()).hexdigest()
+        if self.is_duplicate_content(content_hash):
+            self.statistics['pages_skipped'] += 1
+            return None
+
+        # Extract title
+        title = soup.title.string.strip() if soup.title and soup.title.string else "Untitled"
+
+        # Extract content
+        faq_items = self.extract_faq_content(soup)
+        if faq_items:
+            self.statistics['faq_items_found'] += len(faq_items)
+
+        content = self.extract_structured_content(soup)
+
+        # Generate markdown
+        markdown = self.generate_markdown(url, title, faq_items, content)
+
+        # Save
+        filename = self.generate_filename(url)
+        output_path = self.OUTPUT_DIR / filename
+        output_path.write_text(markdown, encoding='utf-8')
+
+        self.statistics['pages_scraped'] += 1
+        print(f"✓ [{self.statistics['pages_scraped']}] {filename}")
+
+        # Discover new links
+        new_links = self.discover_links_from_page(soup, url)
+        for link in new_links:
+            if link not in self.visited_urls and link not in self.failed_urls:
+                priority = self.prioritize_url(link)
+                heappush(self.url_queue, (priority, link))
+                self.discovered_urls.add(link)
+
+        return str(output_path)
 
     def save_crawler_state(self):
-        """Save crawler state to JSON file for resume capability."""
+        """Save crawler state to JSON."""
         state = {
             'visited_urls': list(self.visited_urls),
             'failed_urls': list(self.failed_urls),
@@ -1019,8 +722,6 @@ class LakeheadScraper:
         state_file = self.OUTPUT_DIR / 'crawler_state.json'
         with open(state_file, 'w', encoding='utf-8') as f:
             json.dump(state, f, indent=2)
-
-        print(f"Crawler state saved to {state_file}")
 
     def load_crawler_state(self):
         """Load crawler state from disk."""
@@ -1038,99 +739,14 @@ class LakeheadScraper:
             self.content_hashes = set(state.get('content_hashes', []))
             self.statistics = state.get('statistics', self.statistics)
 
-            print(f"Loaded crawler state: {len(self.visited_urls)} pages already crawled")
+            print(f"Loaded state: {len(self.visited_urls)} pages already crawled")
         except Exception as e:
-            print(f"Error loading crawler state: {e}")
+            print(f"Error loading state: {e}")
 
-    def generate_filename_from_url(self, url: str) -> str:
-        """Generate a safe filename from URL.
-
-        Args:
-            url: URL to convert
-
-        Returns:
-            Safe filename
-        """
-        # Remove protocol and domain
-        path = urlparse(url).path
-
-        # Replace slashes and special characters
-        filename = re.sub(r'[^\w\-_.]', '_', path)
-        filename = filename.strip('_')
-
-        # Handle empty filename
-        if not filename:
-            filename = 'index'
-
-        # Limit length
-        if len(filename) > 100:
-            filename = filename[:100]
-
-        return filename
-
-    def scrape_page_recursive(self, url: str) -> Optional[str]:
-        """Scrape a single page and discover links (recursive).
+    def crawl_comprehensive(self, max_pages: Optional[int] = None) -> List[str]:
+        """Perform comprehensive recursive crawl of ALL Lakehead pages.
 
         Args:
-            url: URL to scrape
-
-        Returns:
-            Path to saved file if successful, None otherwise
-        """
-        # Check if already visited
-        if url in self.visited_urls:
-            return None
-
-        self.visited_urls.add(url)
-
-        # Fetch page
-        soup = self.fetch_page(url)
-        if not soup:
-            self.failed_urls.add(url)
-            self.statistics['pages_failed'] += 1
-            return None
-
-        time.sleep(self.delay)
-
-        # Check content quality
-        if not self.should_scrape_page(soup, url):
-            self.statistics['pages_skipped'] += 1
-            return None
-
-        # Check for duplicate content
-        content_hash = hashlib.md5(str(soup).encode()).hexdigest()
-        if self.is_duplicate_content(content_hash):
-            self.statistics['pages_skipped'] += 1
-            return None
-
-        # Extract and save content
-        description = "Discovered from Lakehead University website"
-        section_name = self.generate_filename_from_url(url)
-
-        content = self.extract_content(soup, url)
-        markdown_content = self.generate_markdown(section_name, description, content)
-
-        output_file = self.OUTPUT_DIR / f"{section_name}.md"
-        output_file.write_text(markdown_content, encoding='utf-8')
-
-        self.statistics['pages_scraped'] += 1
-        print(f"✓ [{self.statistics['pages_scraped']}] Saved: {output_file}")
-
-        # Discover links and add to priority queue
-        new_links = self.discover_links_from_page(soup, url)
-        for link in new_links:
-            if link not in self.visited_urls and link not in self.failed_urls:
-                priority = self.prioritize_url(link)
-                heappush(self.url_queue, (priority, link))
-                self.discovered_urls.add(link)
-
-        return str(output_file)
-
-    def crawl_comprehensive(self, seed_urls: List[str], max_pages: Optional[int] = None) -> List[str]:
-        """Perform comprehensive recursive crawl.
-
-        Args:
-            seed_urls: Starting URLs for crawling
             max_pages: Maximum number of pages to crawl (None for unlimited)
 
         Returns:
@@ -1138,20 +754,35 @@ class LakeheadScraper:
         """
         self.statistics['start_time'] = datetime.now().isoformat()
 
-        # Add seed URLs to priority queue
-        for url in seed_urls:
+        print("=" * 80)
+        print("COMPREHENSIVE LAKEHEAD UNIVERSITY WEB SCRAPER")
+        print("=" * 80)
+        print(f"Max pages: {max_pages or 'UNLIMITED - All discoverable pages'}")
+        print(f"Output directory: {self.OUTPUT_DIR}")
+        print()
+
+        # Discover URLs from sitemaps
+        print("Discovering URLs from sitemaps...")
+        for sitemap in self.SITEMAPS:
+            urls = self.discover_urls_from_sitemap(sitemap)
+            for url in urls:
+                if self.is_valid_url(url):
+                    priority = self.prioritize_url(url)
+                    heappush(self.url_queue, (priority, url))
+                    self.discovered_urls.add(url)
+
+        # Add seed URLs
+        print(f"Adding {len(self.SEED_URLS)} seed URLs...")
+        for url in self.SEED_URLS:
             if self.is_valid_url(url):
                 priority = self.prioritize_url(url)
                 heappush(self.url_queue, (priority, url))
                 self.discovered_urls.add(url)
 
-        created_files = []
-
-        print("Starting comprehensive crawl of Lakehead University websites...")
-        print(f"Seed URLs: {len(seed_urls)}")
-        print(f"Max pages: {max_pages or 'unlimited'}")
-        print(f"Using priority-based crawling (Tier 1 > Tier 2 > Tier 3)")
+        print(f"Starting crawl with {len(self.url_queue)} URLs in queue")
         print()
+
+        created_files = []
 
         # Process priority queue
         while self.url_queue:
@@ -1159,25 +790,25 @@ class LakeheadScraper:
                 print(f"\nReached maximum page limit ({max_pages})")
                 break
 
-            # Get highest priority URL (lowest number)
             priority, url = heappop(self.url_queue)
 
             try:
-                file_path = self.scrape_page_recursive(url)
+                file_path = self.scrape_page(url)
                 if file_path:
                     created_files.append(file_path)
-                    # Track by tier
-                    self.statistics['by_tier'][priority] = self.statistics['by_tier'].get(priority, 0) + 1
+                    self.statistics['by_priority'][priority] = \
+                        self.statistics['by_priority'].get(priority, 0) + 1
 
                 # Save state periodically
-                if self.statistics['pages_scraped'] % 10 == 0:
+                if self.statistics['pages_scraped'] % 50 == 0 and self.statistics['pages_scraped'] > 0:
                     self.save_crawler_state()
-                    print(f"Progress: {self.statistics['pages_scraped']} pages scraped "
-                          f"(Tier 1: {self.statistics['by_tier'][1]}, "
-                          f"Tier 2: {self.statistics['by_tier'][2]}, "
-                          f"Tier 3: {self.statistics['by_tier'][3]}), "
+                    print(f"\nProgress: {self.statistics['pages_scraped']} scraped, "
                           f"{len(self.url_queue)} in queue, "
-                          f"{self.statistics['pages_skipped']} skipped")
+                          f"{self.statistics['pages_skipped']} skipped, "
+                          f"{self.statistics['faq_items_found']} FAQ items")
+                    print(f"Priority distribution - T1: {self.statistics['by_priority'][1]}, "
+                          f"T2: {self.statistics['by_priority'][2]}, "
+                          f"T3: {self.statistics['by_priority'][3]}")
 
             except Exception as e:
                 print(f"Error processing {url}: {e}")
@@ -1187,57 +818,38 @@ class LakeheadScraper:
         self.statistics['end_time'] = datetime.now().isoformat()
         self.save_crawler_state()
 
+        print()
+        print("=" * 80)
+        print("CRAWLING COMPLETE!")
+        print("=" * 80)
+        print(f"Pages scraped: {self.statistics['pages_scraped']}")
+        print(f"Pages skipped: {self.statistics['pages_skipped']}")
+        print(f"Pages failed: {self.statistics['pages_failed']}")
+        print(f"FAQ items found: {self.statistics['faq_items_found']}")
+        print(f"Links discovered: {self.statistics['links_discovered']}")
+        print(f"Files created: {len(created_files)}")
+        print()
+
         return created_files
 
 
 def main():
-    """Main entry point for the comprehensive crawler."""
+    """Main entry point."""
     import argparse
 
-    parser = argparse.ArgumentParser(description='Crawl Lakehead University websites comprehensively')
-    parser.add_argument('--max-pages', type=int, help='Maximum number of pages to crawl')
-    parser.add_argument('--resume', action='store_true', help='Resume from previous crawl state')
-    parser.add_argument('--delay', type=float, default=1.0, help='Delay between requests (seconds)')
+    parser = argparse.ArgumentParser(
+        description='Comprehensive recursive scraper for ALL Lakehead University pages'
+    )
+    parser.add_argument('--max-pages', type=int,
+                       help='Maximum number of pages to crawl (default: unlimited)')
+    parser.add_argument('--resume', action='store_true',
+                       help='Resume from previous crawl state')
+    parser.add_argument('--delay', type=float, default=1.0,
+                       help='Delay between requests in seconds (default: 1.0)')
     args = parser.parse_args()
 
-    print("=" * 80)
-    print("Lakehead University Comprehensive Website Crawler")
-    print("=" * 80)
-    print()
-
-    scraper = LakeheadScraper(delay=args.delay, resume=args.resume)
-
-    # Seed URLs for comprehensive crawling (from SECTIONS with priorities)
-    seed_urls = []
-
-    # Add all URLs from SECTIONS dictionary
-    for section_config in scraper.SECTIONS.values():
-        if 'url' in section_config:
-            seed_urls.append(section_config['url'])
-
-    # Also add LUSU homepage and main catalog
-    seed_urls.extend([
-        scraper.LUSU_URL,
-        "https://csdc.lakeheadu.ca/Catalog/ViewCatalog.aspx"
-    ])
-
-    # Perform comprehensive crawl
-    created_files = scraper.crawl_comprehensive(seed_urls, max_pages=args.max_pages)
-
-    print()
-    print("=" * 80)
-    print("Crawling Complete!")
-    print("=" * 80)
-    print()
-    print("Statistics:")
-    print(f"  - Pages scraped: {scraper.statistics['pages_scraped']}")
-    print(f"  - Pages skipped: {scraper.statistics['pages_skipped']}")
-    print(f"  - Pages failed: {scraper.statistics['pages_failed']}")
-    print(f"  - Links discovered: {scraper.statistics['links_discovered']}")
-    print(f"  - Files created: {len(created_files)}")
-    print()
-    print(f"Output directory: {scraper.OUTPUT_DIR}")
-    print()
+    scraper = ComprehensiveLakeheadScraper(delay=args.delay, resume=args.resume)
+    scraper.crawl_comprehensive(max_pages=args.max_pages)
 
 
 if __name__ == "__main__":
