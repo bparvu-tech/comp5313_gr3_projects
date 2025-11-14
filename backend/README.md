@@ -10,6 +10,7 @@ We use [Anaconda](https://www.anaconda.com) for environment management to ensure
 - Chat endpoint for user interactions
 - Health check endpoint for monitoring
 - Session management support
+- Optional TF-IDF retrieval fallback for low-confidence Dialogflow replies
 
 ✅ **Production Ready**
 - Comprehensive error handling and logging
@@ -82,6 +83,20 @@ Make sure you are inside the `backend/` folder and then run:
 ```bash
 python run.py
 ```
+
+## 6. Retrieval-Augmented Responses (Optional)
+
+The backend can fall back to a TF-IDF retriever when Dialogflow returns low-confidence answers.
+
+- Place markdown knowledge files under `data/lakehead_scraped/` (default path).
+- Environment variables:
+  - `RAG_ENABLED` (default: `true`)
+  - `RAG_DATA_DIR` (defaults to `../data/lakehead_scraped` relative to `backend/`)
+  - `RAG_MIN_CONFIDENCE` (default: `0.55`) – minimum Dialogflow confidence before using its reply alone
+  - `RAG_MIN_SIMILARITY` (default: `0.22`) – minimum cosine similarity required to use a retrieved passage
+  - `RAG_MAX_DOCS` (default: `500`) – number of markdown files to index
+
+When enabled, the chatbot will either append or replace Dialogflow output with the best-matching passage, resulting in richer answers while intents are still under construction.
 
 ## 6. Updating Dependencies
 
