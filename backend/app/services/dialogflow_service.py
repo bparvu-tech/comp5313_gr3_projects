@@ -10,6 +10,7 @@ from google.cloud.dialogflowcx_v3.types import DetectIntentRequest, QueryInput, 
 from google.oauth2 import service_account
 
 from app import config
+from app.services.rag_service import get_best_passage
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,8 @@ DIALOGFLOW_LOCATION = (getattr(config, "DIALOGFLOW_LOCATION", None) or
                        os.getenv("DIALOGFLOW_LOCATION", "global"))
 DIALOGFLOW_AGENT_ID = (getattr(config, "DIALOGFLOW_AGENT_ID", None) or
                        os.getenv("DIALOGFLOW_AGENT_ID"))
+RAG_ENABLED = getattr(config, "RAG_ENABLED", True)
+RAG_MIN_CONFIDENCE = float(getattr(config, "RAG_MIN_CONFIDENCE", 0.55))
 
 # If no key path provided, fall back to a local file named "dialogflow_key.json"
 # next to the package (if it exists).
@@ -36,13 +39,15 @@ if not DIALOGFLOW_KEY_PATH or not DIALOGFLOW_PROJECT_ID:
         "DIALOGFLOW_PROJECT_ID"
     )
 
-# Initialize Dialogflow CX SessionsClient using explicit service account credentials
+# Initialize Dialogflow CX SessionsClient using explicit service account
+# credentials
 if not os.path.isfile(DIALOGFLOW_KEY_PATH):
     error_msg = "Dialogflow credentials file not found: %s"
     logger.error(error_msg, DIALOGFLOW_KEY_PATH)
     raise FileNotFoundError(error_msg % DIALOGFLOW_KEY_PATH)
 
-_credentials = service_account.Credentials.from_service_account_file(DIALOGFLOW_KEY_PATH)
+_credentials = service_account.Credentials.from_service_account_file(
+    DIALOGFLOW_KEY_PATH)
 
 # Configure client with regional endpoint
 client_options = None
@@ -83,15 +88,15 @@ def detect_intent_texts(text: str, session_id: Optional[str] = "demo-session",
         text = text.strip()
         if len(text) > 1000:
             logger.warning("Text too long for Dialogflow: %d characters",
-                          len(text))
+                           len(text))
             return ("Your message is too long. "
-                   "Please keep it under 1000 characters.")
+                    "Please keep it under 1000 characters.")
 
         # Check if agent ID is configured
         if not DIALOGFLOW_AGENT_ID:
             logger.error("DIALOGFLOW_AGENT_ID not configured")
             return ("The chatbot is not fully configured. "
-                   "Please set DIALOGFLOW_AGENT_ID environment variable.")
+                    "Please set DIALOGFLOW_AGENT_ID environment variable.")
 
         # Create session path for Dialogflow CX
         session_path = (
@@ -102,7 +107,7 @@ def detect_intent_texts(text: str, session_id: Optional[str] = "demo-session",
         )
 
         logger.info("DEBUG - Project: %s, Location: %s, Agent: %s",
-                   DIALOGFLOW_PROJECT_ID, DIALOGFLOW_LOCATION, DIALOGFLOW_AGENT_ID)
+                    DIALOGFLOW_PROJECT_ID, DIALOGFLOW_LOCATION, DIALOGFLOW_AGENT_ID)
         logger.info("DEBUG - Full session path: %s", session_path)
 
         # Create text input and query
@@ -116,13 +121,16 @@ def detect_intent_texts(text: str, session_id: Optional[str] = "demo-session",
         )
 
         logger.debug("Sending request to Dialogflow CX: session=%s, text='%s...'",
-                    session_id, text[:50])
+                     session_id, text[:50])
 
         # Make request to Dialogflow CX
         response = _session_client.detect_intent(request=request)
 
         # Extract response messages
         response_messages = response.query_result.response_messages
+        detection_confidence = float(
+            getattr(response.query_result, "intent_detection_confidence", 0.0)
+        )
         fulfillment_text = ""
 
         # Combine all text responses
@@ -134,22 +142,40 @@ def detect_intent_texts(text: str, session_id: Optional[str] = "demo-session",
 
         # Log intent detection results
         logger.info("Dialogflow CX response received: %s...",
-                   fulfillment_text[:100] if fulfillment_text else "empty")
+                    fulfillment_text[:100] if fulfillment_text else "empty")
 
         # Return response or fallback
-        if fulfillment_text:
+        if fulfillment_text and detection_confidence >= RAG_MIN_CONFIDENCE:
             return fulfillment_text
 
-        logger.warning("No fulfillment text from Dialogflow CX for input: '%s'",
-                      text)
+        rag_response = {}
+        if RAG_ENABLED:
+            rag_response = get_best_passage({"query": text})
+            rag_text = rag_response.get("text")
+            if fulfillment_text and rag_text:
+                logger.info("Combining Dialogflow reply with RAG passage (confidence %.2f)",
+                            detection_confidence)
+                return (f"{fulfillment_text}\n\nAdditional information:\n"
+                        f"{rag_text}")
+            if rag_text:
+                logger.info("Using RAG fallback response.")
+                return rag_text
+
+        if fulfillment_text:
+            logger.info("Returning low-confidence Dialogflow response (%.2f)",
+                        detection_confidence)
+            return fulfillment_text
+
+        logger.warning("No fulfillment text from Dialogflow CX for input: '%s'. "
+                       "RAG result: %s", text, bool(rag_response.get("text")))
         return ("I'm sorry, I'm having trouble understanding that. "
-               "Could you please rephrase your question?")
+                "Could you please rephrase your question?")
 
     except InvalidArgument as invalid_arg_error:
         logger.error("Dialogflow InvalidArgument error: %s", invalid_arg_error)
         return "I'm experiencing a technical issue. Please try again in a moment."
-    except Exception as unexpected_error:
+    except Exception as unexpected_error:  # pylint: disable=broad-exception-caught
         logger.error("Dialogflow detect_intent failed: %s", unexpected_error,
-                    exc_info=True)
+                     exc_info=True)
         return ("I'm having trouble connecting to my knowledge base. "
-               "Please try again later.")
+                "Please try again later.")
