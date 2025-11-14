@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ChatBot for Group 3 COMP5313</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    #chat-box {
+      border: 1px solid #ccc;
+      padding: 10px;
+      height: 300px;
+      width: 400px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+    }
+    #user-input {
+      width: 300px;
+      padding: 5px;
+    }
+    #send-btn {
+      padding: 5px 10px;
+    }
+    .bot {
+      color: blue;
+    }
+    .user {
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <h2>ChatBot for Group 3 COMP5313</h2>
+  <p>What would you like to find out today?</p>
+  <input type="text" id="user-input" placeholder="Type your message...">
+  <button id="send-btn">Send</button>
+  <div id="chat-box"></div>
+
+  <!-- Link to your script.js -->
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
