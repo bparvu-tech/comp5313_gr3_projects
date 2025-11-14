@@ -1,12 +1,14 @@
 # API Documentation
 
-## Quick Start
+## API Base URLs
 
-The API documentation is **automatically generated** from the code. No manual updates needed!
+### Development
+- Local: `http://localhost:5000`
+- Interactive Docs: `http://localhost:5000/docs/`
 
-### 🌐 Interactive Documentation
-**Open this link to explore and test the API:**
-- http://localhost:5000/docs/
+### Production
+- Live API: `https://comp5313lakeheadu.pythonanywhere.com`
+- Interactive Docs: `https://comp5313lakeheadu.pythonanywhere.com/docs/`
 
 ## Available Endpoints
 
@@ -16,16 +18,35 @@ The API documentation is **automatically generated** from the code. No manual up
 ### Chat with Bot
 - **POST** `/api/v1/chat/` - Send messages to the chatbot
 
+## CORS Configuration
+
+The API accepts requests from any origin for development purposes:
+```python
+CORS(app, resources={r"/*": {"origins": "*"}})
+```
+
+This allows frontend applications hosted on any domain to make requests to the API.
+
 ## Example Usage
 
 ### 1. Check if service is running
 ```bash
+# Local
 curl http://localhost:5000/api/v1/health/
+
+# Production
+curl https://comp5313lakeheadu.pythonanywhere.com/api/v1/health/
 ```
 
 ### 2. Chat with the bot
 ```bash
+# Local
 curl -X POST http://localhost:5000/api/v1/chat/ \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello, what programs does Lakehead offer?"}'
+
+# Production
+curl -X POST https://comp5313lakeheadu.pythonanywhere.com/api/v1/chat/ \
   -H "Content-Type: application/json" \
   -d '{"message": "Hello, what programs does Lakehead offer?"}'
 ```

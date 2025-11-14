@@ -1,9 +1,49 @@
+# IDE and editor files
 .vscode/*
-backend/dialogflow_key.json
-.env
+.idea/
+*.swp
+*.swo
+*~
+.cursorrules
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment variables and secrets
+.env
+.env.*
+*.env
+backend/.env
+backend/*.env
+
+# Google Cloud credentials
+**/dialogflow_key.json
+**/*key.json
+**/*credentials.json
+**/*service-account*.json
+
+# OS files
 .DS_Store
-.cursorrules
-# Scraped data
+Thumbs.db
+
+# Data and logs
 data/
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

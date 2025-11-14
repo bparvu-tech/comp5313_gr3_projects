@@ -1,0 +1,86 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Deploy to PythonAnywhere Production
+        env:
+          PYTHONANYWHERE_USERNAME: ${{ secrets.PYTHONANYWHERE_USERNAME }}
+          PYTHONANYWHERE_API_TOKEN: ${{ secrets.PYTHONANYWHERE_API_TOKEN }}
+          PYTHONANYWHERE_DOMAIN: ${{ secrets.PYTHONANYWHERE_DOMAIN }}
+        run: |
+          pip install requests
+          
+          cat > deploy_script.py << 'DEPLOY_EOF'
+          import requests
+          import os
+          import sys
+          
+          username = os.environ['PYTHONANYWHERE_USERNAME']
+          token = os.environ['PYTHONANYWHERE_API_TOKEN']
+          domain = os.environ['PYTHONANYWHERE_DOMAIN']
+          
+          api_base = f'https://www.pythonanywhere.com/api/v0/user/{username}'
+          headers = {'Authorization': f'Token {token}'}
+          
+          print("🚀 Deploying to PRODUCTION...")
+          
+          # Pull main branch
+          response = requests.post(
+              f'{api_base}/consoles/bash/send_input',
+              headers=headers,
+              json={'input': 'cd ~/comp5313_gr3_projects && git checkout main && git pull origin main\n'}
+          )
+          
+          if response.status_code == 200:
+              print("✓ Production code pulled successfully")
+          else:
+              print(f"✗ Failed to pull code: {response.status_code}")
+              sys.exit(1)
+          
+          # Install dependencies
+          print("📦 Installing dependencies...")
+          response = requests.post(
+              f'{api_base}/consoles/bash/send_input',
+              headers=headers,
+              json={'input': 'cd ~/comp5313_gr3_projects && source venv/bin/activate && pip install -r backend/requirements.txt\n'}
+          )
+          
+          # Reload web app
+          print("🔄 Reloading production web app...")
+          response = requests.post(
+              f'{api_base}/webapps/{domain}/reload/',
+              headers=headers
+          )
+          
+          if response.status_code == 200:
+              print(f"✅ PRODUCTION deployment complete! Live at https://{domain}")
+          else:
+              print(f"✗ Failed to reload: {response.status_code}")
+              sys.exit(1)
+          
+          DEPLOY_EOF
+          
+          python deploy_script.py
+      
+      - name: Create deployment notification
+        if: success()
+        run: |
+          echo "🎉 Production deployment successful!"
+          echo "Version: ${{ github.sha }}"
+          echo "Deployed by: ${{ github.actor }}"
+

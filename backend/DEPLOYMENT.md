@@ -109,10 +109,3 @@ Check the error logs in the **Web** tab for debugging information.
 - The file is already listed in `.gitignore`
 - Ensure the service account has minimal required permissions
 
-## Performance Optimization
-
-For production deployment:
-1. Consider upgrading to a paid PythonAnywhere plan
-2. Implement caching for frequent queries
-3. Add rate limiting
-4. Monitor memory and CPU usage

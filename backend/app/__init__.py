@@ -42,11 +42,15 @@ def create_app(config_object=None):
     # Configure CORS for frontend integration
     cors_origins = [
         "http://localhost:3000",  # React development server
+        "http://localhost:5000",  # Frontend test server
         "http://localhost:8080",  # Vue development server
+        "http://127.0.0.1:5000",  # Frontend test server (127.0.0.1)
+        "http://127.0.0.1:8080",  # Alternative port
         "https://*.pythonanywhere.com",  # PythonAnywhere domains
         "https://lakehead-chatbot.pythonanywhere.com"  # Production domain
     ]
-    CORS(app, origins=cors_origins)
+    # Allow all origins for development/prototype (disable in production)
+    CORS(app, resources={r"/*": {"origins": "*"}})
 
     # Register API with automatic documentation
     from .api_routes import api  # pylint: disable=import-outside-toplevel
