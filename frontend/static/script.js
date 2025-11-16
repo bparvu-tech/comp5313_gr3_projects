@@ -1,43 +1,190 @@
-// Get references to HTML elements
-const chatBox = document.getElementById('chat-box');   // div where messages appear
-const userInput = document.getElementById('user-input'); // input field
-const sendBtn = document.getElementById('send-btn');     // send button
-
-// Function to append messages to chat box
-function appendMessage(sender, text) {
-  const msg = document.createElement('div');
-  msg.innerHTML = `<b>${sender}:</b> ${text}`;
-  chatBox.appendChild(msg);
-  chatBox.scrollTop = chatBox.scrollHeight; // scroll to bottom
+function generateSessionId() {
+  return (
+    "session_" +
+    Date.now() +
+    "_" +
+    Math.random().toString(36).substr(2, 9)
+  );
 }
 
-// Function to send user message to Flask backend
-async function sendMessage() {
-  const message = userInput.value.trim();
-  if (!message) return;
+const CONFIG = {
+  apiEndpoint: "/api/v1/chat/",
+  sessionId: generateSessionId(),
+};
 
-  appendMessage('You', message);   // show user message
-  userInput.value = '';            // clear input field
+document.addEventListener("DOMContentLoaded", () => {
+  const chatPopup = document.getElementById("chat-popup");
+  const chatToggle = document.getElementById("chat-toggle");
+  const chatClose = document.getElementById("chat-close");
+  const chatBox = document.getElementById("chat-box");
+  const userInput = document.getElementById("user-input");
+  const sendBtn = document.getElementById("send-btn");
+  const chatReset = document.getElementById("chat-reset");
 
-  try {
-    // Send POST request to Flask /chat endpoint
-    const response = await fetch('/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message })  // must match app.py expectation
+  if (!chatBox || !userInput || !sendBtn) {
+    console.error("Chat DOM elements not found");
+    return;
+  }
+
+  function appendMessage(sender, text) {
+    const msg = document.createElement("div");
+    msg.innerHTML = `<b>${sender}:</b> ${text}`;
+    chatBox.appendChild(msg);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function resetChat() {
+    chatBox.innerHTML = "";
+
+    const welcome = document.querySelector(".chat-welcome");
+    if (welcome) {
+      welcome.style.display = "block";
+    }
+
+    chatBox.scrollTop = 0;
+
+    const newId =
+      (crypto.randomUUID
+        ? crypto.randomUUID()
+        : "sess-" +
+          Date.now() +
+          "-" +
+          Math.random().toString(16).slice(2));
+    CONFIG.sessionId = newId;
+    console.log("Chat reset, new session ID:", CONFIG.sessionId);
+  }
+
+  // --- Main send function ---
+  async function sendMessage() {
+    const message = userInput.value.trim();
+    if (!message) return;
+
+    userInput.disabled = true;
+    sendBtn.disabled = true;
+
+    // Show user message
+    appendMessage("You", message);
+    userInput.value = "";
+
+    // Hide welcome after first real message
+    const welcome = document.querySelector(".chat-welcome");
+    if (welcome) welcome.style.display = "none";
+
+    // Add "Thinking..." placeholder
+    const thinkingDiv = document.createElement("div");
+    thinkingDiv.id = "assistant-thinking";
+    thinkingDiv.innerHTML =
+      `<b>Assistant:</b> <span class="thinking-text">Thinking<span class="thinking-dots"></span></span>`;
+    chatBox.appendChild(thinkingDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    const MIN_THINKING_MS = 1800;
+    const startTime = Date.now();
+
+    try {
+      const response = await fetch(CONFIG.apiEndpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: message,
+          session_id: CONFIG.sessionId,
+        }),
+      });
+
+      if (!response.ok) {
+        let errorMsg = `Server error: ${response.status}`;
+        try {
+          const errData = await response.json();
+          if (errData && errData.message) {
+            errorMsg = errData.message;
+          }
+        } catch {
+          /* ignore JSON errors */
+        }
+        throw new Error(errorMsg);
+      }
+
+      const data = await response.json();
+      let reply = (data.response || data.reply || "").trim();
+
+      if (!reply) {
+        reply =
+          "I didn't catch this information, try asking in a different way.";
+      }
+
+      const elapsed = Date.now() - startTime;
+      if (elapsed < MIN_THINKING_MS) {
+        await new Promise((res) => setTimeout(res, MIN_THINKING_MS - elapsed));
+      }
+
+      thinkingDiv.innerHTML = `<b>Assistant:</b> ${reply}`;
+      chatBox.scrollTop = chatBox.scrollHeight;
+    } catch (error) {
+      console.error("Chat error:", error);
+
+      const elapsed = Date.now() - startTime;
+      if (elapsed < MIN_THINKING_MS) {
+        await new Promise((res) => setTimeout(res, MIN_THINKING_MS - elapsed));
+      }
+
+      thinkingDiv.innerHTML =
+        `<b>Assistant:</b> I'm having trouble connecting right now. ` +
+        `Please make sure the backend server is running and try again.`;
+      chatBox.scrollTop = chatBox.scrollHeight;
+    } finally {
+      userInput.disabled = false;
+      sendBtn.disabled = false;
+      userInput.focus();
+    }
+  }
+
+  // --- Wire events ---
+  sendBtn.addEventListener("click", sendMessage);
+  userInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  document.querySelectorAll(".chat-quick-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const question = btn.dataset.question;
+      userInput.value = question;
+      sendMessage();
+
+      const welcome = document.querySelector(".chat-welcome");
+      if (welcome) welcome.style.display = "none";
+    });
+  });
+
+  if (chatReset) {
+    chatReset.addEventListener("click", resetChat);
+  }
+
+  if (chatClose && chatToggle && chatPopup) {
+    chatClose.addEventListener("click", () => {
+      chatPopup.style.display = "none";
+      chatToggle.style.display = "block";
     });
 
-    const data = await response.json();
-    appendMessage('Bot', data.reply);  // display Flask/Dialogflow reply
-
-  } catch (err) {
-    console.error('Error:', err);
-    appendMessage('Bot', 'Sorry, something went wrong.');
+    chatToggle.addEventListener("click", () => {
+      chatPopup.style.display = "flex";
+      chatToggle.style.display = "none";
+    });
   }
-}
 
-// Event listeners
-sendBtn.addEventListener('click', sendMessage);
-userInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') sendMessage();
+  // Show popup on first load
+  if (chatPopup) {
+    chatPopup.style.display = "flex";
+  }
+  if (chatToggle) {
+    chatToggle.style.display = "none";
+  }
+
+  console.log("Chatbot initialized");
+  console.log("Session ID:", CONFIG.sessionId);
+  console.log("API Endpoint:", CONFIG.apiEndpoint);
 });

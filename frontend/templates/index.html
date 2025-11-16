@@ -1,44 +1,404 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>ChatBot for Group 3 COMP5313</title>
+  <meta charset="UTF-8" />
+  <title>Lakehead University</title>
   <style>
+
     body {
+      margin: 0;
+      padding: 0;
       font-family: Arial, sans-serif;
-      margin: 20px;
+
+      background-image: url("{{ url_for('static', filename='img/thunderBayCampus.jpg') }}");
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      background-repeat: no-repeat;
     }
-    #chat-box {
-      border: 1px solid #ccc;
-      padding: 10px;
-      height: 300px;
-      width: 400px;
+
+    .lakehead-header {
+    width: 100%;
+    background: #ffffff;
+    min-height: 160px;
+    text-align: center;
+    }
+
+    .lakehead-banner {
+    max-width: 100%;
+    min-height: 90px;
+    height: auto;
+    display: block;
+    margin: auto;
+    max-height: 160px;
+    object-fit: cover;
+    }
+
+    #lakehead-mini-nav {
+      background: #003E74; /* Lakehead-ish blue */
+      padding: 10px 20px;
+    }
+
+    #lakehead-mini-nav ul {
+      display: flex;
+      gap: 1rem;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    #lakehead-mini-nav a {
+      color: white;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    #lakehead-mini-nav a:hover {
+      text-decoration: underline;
+    }
+
+    /* Chat popup */
+    .chat-welcome {
+      background: #f5f6fa;
+      padding: 16px 18px 12px;
+      text-align: center;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .chat-welcome h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .chat-welcome h2 span {
+      font-size: 20px;
+    }
+
+    .chat-welcome p {
+      margin: 0 0 6px;
+      font-size: 13px;
+      color: #444;
+    }
+
+    .chat-welcome-try {
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    .chat-quick-questions {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+}
+
+    .chat-quick-btn {
+      padding: 6px 14px;
+      font-size: 12px;
+      border-radius: 18px;
+      border: 2px solid #0059b3;
+      background: #0059b3;
+      color: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .chat-quick-btn:nth-child(n+2) {
+      background: #ffffff;
+      color: #0059b3;
+    }
+
+    .chat-quick-btn:hover {
+      background: #003e74;
+      color: #fff;
+    }
+
+    .chat-popup {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 380px;
+      max-height: 520px;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 9999;
+    }
+
+    /* Blue top bar */
+    .chat-topbar {
+      background: #0059b3;
+      color: #fff;
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .chat-topbar-title {
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .chat-topbar-sub {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    .chat-close {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    /* Welcome section */
+    .chat-welcome {
+      background: #f5f6fa;
+      padding: 16px 18px 14px;
+      text-align: center;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .chat-welcome h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .chat-welcome h2 span {
+      font-size: 20px;
+    }
+
+    .chat-welcome p {
+      margin: 0 0 6px;
+      font-size: 13px;
+      color: #444;
+    }
+
+    .chat-welcome-try {
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    /* Quick-question buttons */
+    .chat-quick-questions {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .chat-quick-btn {
+      padding: 6px 14px;
+      font-size: 12px;
+      border-radius: 18px;
+      border: 2px solid #0059b3;
+      background: #ffffff;
+      color: #0059b3;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .chat-quick-btn:hover {
+      background: #0059b3;
+      color: #fff;
+    }
+
+    /* Chat messages area */
+    .chat-box {
+      padding: 8px 10px;
+      flex: 1;
       overflow-y: auto;
-      margin-bottom: 10px;
+      font-size: 14px;
+      background: #f7f7f7;
     }
+
+    /* Input row */
+    .chat-input-row {
+      display: flex;
+      border-top: 1px solid #ddd;
+      background: #fff;
+    }
+
     #user-input {
-      width: 300px;
-      padding: 5px;
+      flex: 1;
+      border: none;
+      padding: 8px;
+      font-size: 14px;
+      outline: none;
     }
+
     #send-btn {
-      padding: 5px 10px;
+      border: none;
+      padding: 0 12px;
+      cursor: pointer;
+      background: #003E74;
+      color: #fff;
+      font-size: 14px;
     }
-    .bot {
-      color: blue;
+
+    /* Floating toggle button */
+    .chat-toggle {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 10px 16px;
+      border-radius: 20px;
+      border: none;
+      background: #003E74;
+      color: #fff;
+      cursor: pointer;
+      font-size: 14px;
+      display: none;
+      z-index: 9998;
     }
-    .user {
-      color: green;
+
+    .thinking-text {
+      font-style: italic;
+  }
+
+  .thinking-dots::after {
+    content: '';
+    animation: thinkingDots 1s steps(3, end) infinite;
+  }
+
+  @keyframes thinkingDots {
+    0%   { content: ''; }
+    33%  { content: '.'; }
+    66%  { content: '..'; }
+    100% { content: '...'; }
+  }
+
+  .chat-topbar {
+    background: #0059b3;
+    color: #fff;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .chat-topbar-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .chat-reset {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    color: #fff;
+    font-size: 14px;
+    line-height: 24px;
+    text-align: center;
+    padding: 0;
+  }
+
+  .chat-reset:hover {
+    background: rgba(255, 255, 255, 0.35);
+  }
+
+
     }
+
   </style>
 </head>
 <body>
-  <h2>ChatBot for Group 3 COMP5313</h2>
-  <p>What would you like to find out today?</p>
-  <input type="text" id="user-input" placeholder="Type your message...">
-  <button id="send-btn">Send</button>
-  <div id="chat-box"></div>
 
-  <!-- Link to your script.js -->
+  <header class="lakehead-header"
+          style="background-image:
+          linear-gradient(rgba(0, 40, 85, 0.4), rgba(0, 40, 85, 0.4)),
+          url('{{ url_for('static', filename='img/thunderBayCampus.jpg') }}');">
+    <a href="https://www.lakeheadu.ca" target="_blank" rel="noopener noreferrer">
+      <img
+        src="{{ url_for('static', filename='img/lakeheadLogo.png') }}"
+        alt="Lakehead University banner"
+        class="lakehead-banner"
+      >
+    </a>
+  </header>
+
+
+  <!-- Lakehead-style nav -->
+  <nav id="lakehead-mini-nav">
+    <ul>
+      <li><a href="#">Programs</a></li>
+      <li><a href="#">Admissions</a></li>
+      <li><a href="#">Campus Life</a></li>
+      <li><a href="#">International</a></li>
+      <li><a href="#">Research &amp; Innovation</a></li>
+    </ul>
+  </nav>
+
+  <!-- Chat popup -->
+  <div id="chat-popup" class="chat-popup">
+    <!-- Blue top bar -->
+    <div class="chat-topbar">
+      <div>
+        🎓 <span class="chat-topbar-title">Lakehead University Assistant</span><br>
+        <span class="chat-topbar-sub">Ask me anything about programs, admissions, campus life, and more!</span>
+      </div>
+      <div class="chat-topbar-actions">
+        <button id="chat-reset" class="chat-reset" title="Restart chat">↻</button>
+        <button id="chat-close" class="chat-close" title="Close">&times;</button>
+      </div>
+    </div>
+
+
+    <!-- Welcome + quick questions -->
+    <div class="chat-welcome">
+      <h2>Welcome to Lakehead University! <span>👋</span></h2>
+      <p>
+        I'm here to help you with information about our programs, admissions,
+        student services, campus life, and more.
+      </p>
+      <p class="chat-welcome-try">Try asking me:</p>
+
+      <div class="chat-quick-questions">
+        <button class="chat-quick-btn" data-question="What programs are available?">
+          What programs are available?
+        </button>
+        <button class="chat-quick-btn" data-question="How do I apply?">
+          How do I apply?
+        </button>
+        <button class="chat-quick-btn" data-question="Tell me about residence">
+          Tell me about residence
+        </button>
+        <button class="chat-quick-btn" data-question="What are the fees?">
+          What are the fees?
+        </button>
+      </div>
+    </div>
+
+    <!-- Messages area -->
+    <div id="chat-box" class="chat-box"></div>
+
+    <!-- Input row -->
+    <div class="chat-input-row">
+      <input id="user-input" type="text" placeholder="Type your message..." />
+      <button id="send-btn">Send</button>
+    </div>
+  </div>
+
+  <!-- Floating toggle button -->
+  <button id="chat-toggle" class="chat-toggle">Chat</button>
+
   <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
