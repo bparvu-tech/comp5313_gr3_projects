@@ -53,7 +53,7 @@ def create_app(config_object=None):
         "https://*.pythonanywhere.com",  # PythonAnywhere domains
         "https://lakehead-chatbot.pythonanywhere.com"  # Production domain
     ]
-    CORS(app, origins=cors_origins)
+    CORS(app, resources={r"/*": {"origins": "*"}}) 
 
     # Register API with automatic documentation
     from .api_routes import api  # pylint: disable=import-outside-toplevel
