@@ -58,6 +58,48 @@
       text-decoration: underline;
     }
 
+    /* Make each top-level item a dropdown container */
+    #lakehead-mini-nav li {
+      position: relative;
+    }
+
+    /* Base dropdown style */
+    #lakehead-mini-nav .dropdown {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: #ffffff;
+      min-width: 240px;
+      padding: 8px 0;
+      border-radius: 6px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      flex-direction: column;
+      z-index: 1000;
+    }
+
+    #lakehead-mini-nav .dropdown li {
+      width: 100%;
+    }
+
+    #lakehead-mini-nav .dropdown a {
+      display: block;
+      padding: 6px 14px;
+      color: #003E74;
+      text-decoration: none;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    #lakehead-mini-nav .dropdown a:hover {
+      background: #eef4fb;
+      text-decoration: none;
+    }
+
+    #lakehead-mini-nav li:hover > .dropdown {
+      display: flex;
+    }
+
     /* Chat popup */
     .chat-welcome {
       background: #f5f6fa;
@@ -95,6 +137,28 @@
       gap: 8px;
       justify-content: center;
 }
+
+    .chat-quick-btn {
+      padding: 6px 14px;
+      font-size: 12px;
+      border-radius: 18px;
+      border: 2px solid #0059b3;
+      background: #0059b3;
+      color: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .chat-quick-btn:nth-child(n+2) {
+      background: #ffffff;
+      color: #0059b3;
+    }
+
+    .chat-quick-btn:hover {
+      background: #003e74;
+      color: #fff;
+    }
 
     .chat-popup {
       position: fixed;
@@ -137,6 +201,36 @@
       color: #fff;
       font-size: 18px;
       cursor: pointer;
+    }
+
+    /* Welcome section */
+    .chat-welcome {
+      background: #f5f6fa;
+      padding: 16px 18px 14px;
+      text-align: center;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .chat-welcome h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .chat-welcome h2 span {
+      font-size: 20px;
+    }
+
+    .chat-welcome p {
+      margin: 0 0 6px;
+      font-size: 13px;
+      color: #444;
+    }
+
+    .chat-welcome-try {
+      margin-top: 4px;
+      font-weight: 600;
     }
 
     /* Quick-question buttons */
@@ -230,6 +324,15 @@
     100% { content: '...'; }
   }
 
+  .chat-topbar {
+    background: #0059b3;
+    color: #fff;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
   .chat-topbar-actions {
     display: flex;
     gap: 6px;
@@ -275,16 +378,151 @@
   </header>
 
 
-  <!-- Lakehead-style nav -->
-  <nav id="lakehead-mini-nav">
-    <ul>
-      <li><a href="#">Programs</a></li>
-      <li><a href="#">Admissions</a></li>
-      <li><a href="#">Campus Life</a></li>
-      <li><a href="#">International</a></li>
-      <li><a href="#">Research &amp; Innovation</a></li>
-    </ul>
-  </nav>
+<nav id="lakehead-mini-nav">
+  <ul>
+    <!-- PROGRAMS -->
+    <li class="nav-item">
+      <a href="https://www.lakeheadu.ca/programs" target="_blank" rel="noopener noreferrer">
+        Programs
+      </a>
+      <ul class="dropdown">
+        <li>
+          <a href="https://www.lakeheadu.ca/programs/undergraduate-programs" target="_blank" rel="noopener noreferrer">
+            Undergraduate Programs
+          </a>
+        </li>
+        <li>
+          <a href="https://www.lakeheadu.ca/programs/graduate" target="_blank" rel="noopener noreferrer">
+            Graduate Programs
+          </a>
+        </li>
+        <li>
+          <a href="https://www.lakeheadu.ca/programs/departments" target="_blank" rel="noopener noreferrer">
+            Academic Departments
+          </a>
+        </li>
+        <li>
+          <a href="https://www.lakeheadu.ca/programs/choosing-a-program" target="_blank" rel="noopener noreferrer">
+            Choosing a Program
+          </a>
+        </li>
+        <li>
+          <a href="https://www.lakeheadu.ca/programs/faculties" target="_blank" rel="noopener noreferrer">
+            Faculties
+          </a>
+        </li>
+        <li>
+          <a href="https://www.lakeheadu.ca/programs/other-programs" target="_blank" rel="noopener noreferrer">
+            Other Programs &amp; Studies
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    <!-- ADMISSIONS -->
+    <li class="nav-item">
+      <a href="https://www.lakeheadu.ca/admissions" target="_blank" rel="noopener noreferrer">
+        Admissions
+      </a>
+      <ul class="dropdown">
+        <li>
+          <a href="https://www.lakeheadu.ca/admissions/top-10-reasons-to-choose-lakehead" target="_blank" rel="noopener noreferrer">
+            Top 10 Reasons to Choose Lakehead
+          </a>
+        </li>
+        <li>
+          <a href="https://www.lakeheadu.ca/admissions/undergraduate-admission-requirements" target="_blank" rel="noopener noreferrer">
+            Undergraduate Admission Requirements
+          </a>
+        </li>
+        <li>
+          <a href="https://www.lakeheadu.ca/admissions/how-to-apply/applying-to-lakehead" target="_blank" rel="noopener noreferrer">
+            How to Apply
+          </a>
+        </li>
+        <li>
+          <a href="https://www.lakeheadu.ca/admissions/check-my-application-status" target="_blank" rel="noopener noreferrer">
+            Check My Application Status
+          </a>
+        </li>
+        <li>
+          <a href="https://www.lakeheadu.ca/admissions/scholarships-awards-loans" target="_blank" rel="noopener noreferrer">
+            Scholarships, Awards &amp; Loans
+          </a>
+        </li>
+        <li>
+          <a href="https://www.lakeheadu.ca/admissions/tuition-fees" target="_blank" rel="noopener noreferrer">
+            Tuition &amp; Fees
+          </a>
+        </li>
+        <li>
+          <a href="https://www.lakeheadu.ca/admissions/events" target="_blank" rel="noopener noreferrer">
+            Future Student Events
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    <!-- CAMPUS LIFE -->
+    <li class="nav-item">
+      <a href="https://www.lakeheadu.ca/campus-life" target="_blank" rel="noopener noreferrer">
+        Campus Life
+      </a>
+      <ul class="dropdown">
+        <li>
+          <a href="https://www.lakeheadu.ca/campus-life/discover-lakehead" target="_blank" rel="noopener noreferrer">
+            Discover Lakehead
+          </a>
+        </li>
+        <li>
+          <a href="https://www.lakeheadu.ca/campus-life/discover-lakehead/campus-highlights/city-of-thunder-bay" target="_blank" rel="noopener noreferrer">
+            City of Thunder Bay
+          </a>
+        </li>
+        <li>
+          <a href="https://www.lakeheadu.ca/campus-life/discover-lakehead/campus-highlights/city-of-orillia" target="_blank" rel="noopener noreferrer">
+            City of Orillia
+          </a>
+        </li>
+        <li>
+          <a href="https://www.lakeheadu.ca/students/student-life/residence/on-campus" target="_blank" rel="noopener noreferrer">
+            Residence &amp; Housing
+          </a>
+        </li>
+        <li>
+          <a href="https://www.lakeheadu.ca/campus-life/conference" target="_blank" rel="noopener noreferrer">
+            Food and Conference Services
+          </a>
+        </li>
+        <li>
+          <a href="https://www.lakeheadu.ca/campus-life/getting-involved" target="_blank" rel="noopener noreferrer">
+            Getting Involved
+          </a>
+        </li>
+        <li>
+          <a href="https://www.lakeheadu.ca/campus-life/athletics-recreation" target="_blank" rel="noopener noreferrer">
+            Athletics &amp; Recreation
+          </a>
+        </li>
+        <li>
+          <a href="https://www.lakeheadu.ca/campus-life/student-supports" target="_blank" rel="noopener noreferrer">
+            Student Supports
+          </a>
+        </li>
+        <li>
+          <a href="https://www.lakeheadu.ca/campus-life/alumni-and-careers" target="_blank" rel="noopener noreferrer">
+            Life After Lakehead: Careers
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    <!-- you can leave these as simple links for now -->
+    <li><a href="https://www.lakeheadu.ca/international" target="_blank" rel="noopener noreferrer">International</a></li>
+    <li><a href="https://www.lakeheadu.ca/research-and-innovation" target="_blank" rel="noopener noreferrer">Research &amp; Innovation</a></li>
+  </ul>
+</nav>
+
 
   <!-- Chat popup -->
   <div id="chat-popup" class="chat-popup">
@@ -339,6 +577,7 @@
   <!-- Floating toggle button -->
   <button id="chat-toggle" class="chat-toggle">Chat</button>
 
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
