@@ -7,10 +7,28 @@ function generateSessionId() {
   );
 }
 
+const SESSION_ROTATION_LIMIT = 4;
+let messagesSinceLastSession = 0;
+
 const CONFIG = {
   apiEndpoint: "/api/v1/chat/",
   sessionId: generateSessionId(),
 };
+
+function createNewSessionId() {
+  return crypto.randomUUID
+    ? crypto.randomUUID()
+    : generateSessionId();
+}
+
+function rotateSessionIfNeeded() {
+  messagesSinceLastSession += 1;
+  if (messagesSinceLastSession >= SESSION_ROTATION_LIMIT) {
+    CONFIG.sessionId = createNewSessionId();
+    messagesSinceLastSession = 0;
+    console.log("Rotated session ID:", CONFIG.sessionId);
+  }
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   const chatPopup = document.getElementById("chat-popup");
@@ -43,102 +61,109 @@ document.addEventListener("DOMContentLoaded", () => {
 
     chatBox.scrollTop = 0;
 
-    const newId =
-      (crypto.randomUUID
-        ? crypto.randomUUID()
-        : "sess-" +
-          Date.now() +
-          "-" +
-          Math.random().toString(16).slice(2));
-    CONFIG.sessionId = newId;
+    CONFIG.sessionId = createNewSessionId();
+    messagesSinceLastSession = 0;
     console.log("Chat reset, new session ID:", CONFIG.sessionId);
   }
 
-  // --- Main send function ---
-  async function sendMessage() {
-    const message = userInput.value.trim();
-    if (!message) return;
+// --- Main send function ---
+async function sendMessage() {
+  const message = userInput.value.trim();
+  if (!message) return;
 
-    userInput.disabled = true;
-    sendBtn.disabled = true;
+  userInput.disabled = true;
+  sendBtn.disabled = true;
 
-    // Show user message
-    appendMessage("You", message);
-    userInput.value = "";
+  // Show user message
+  appendMessage("You", message);
+  userInput.value = "";
 
-    // Hide welcome after first real message
-    const welcome = document.querySelector(".chat-welcome");
-    if (welcome) welcome.style.display = "none";
+  // Hide welcome after first real message
+  const welcome = document.querySelector(".chat-welcome");
+  if (welcome) welcome.style.display = "none";
 
-    // Add "Thinking..." placeholder
-    const thinkingDiv = document.createElement("div");
-    thinkingDiv.id = "assistant-thinking";
-    thinkingDiv.innerHTML =
-      `<b>Assistant:</b> <span class="thinking-text">Thinking<span class="thinking-dots"></span></span>`;
-    chatBox.appendChild(thinkingDiv);
+  // Add "Thinking..." placeholder
+  const thinkingDiv = document.createElement("div");
+  thinkingDiv.id = "assistant-thinking";
+  thinkingDiv.innerHTML =
+    `<b>ThunderwolfBot:</b> <span class="thinking-text">Thinking<span class="thinking-dots"></span></span>`;
+  chatBox.appendChild(thinkingDiv);
+  chatBox.scrollTop = chatBox.scrollHeight;
+
+  const MIN_THINKING_MS = 1800;
+  const startTime = Date.now();
+
+  try {
+    const response = await fetch(CONFIG.apiEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: message,
+        session_id: CONFIG.sessionId,
+      }),
+    });
+
+    if (!response.ok) {
+      let errorMsg = `Server error: ${response.status}`;
+      try {
+        const errData = await response.json();
+        if (errData && errData.message) {
+          errorMsg = errData.message;
+        }
+      } catch {
+        /* ignore JSON errors */
+      }
+      throw new Error(errorMsg);
+    }
+
+    const data = await response.json();
+    let reply = (data.response || data.reply || "").trim();
+
+    if (!reply) {
+      reply =
+        "I didn't catch this information, try asking in a different way.";
+    }
+
+    // Markdown → HTML
+    let replyHtml;
+    try {
+      replyHtml = marked.parse(reply);
+    } catch (e) {
+      console.error("Markdown parse error:", e);
+      replyHtml = reply;
+    }
+
+    const elapsed = Date.now() - startTime;
+    if (elapsed < MIN_THINKING_MS) {
+      await new Promise((res) => setTimeout(res, MIN_THINKING_MS - elapsed));
+    }
+
+    // Use ThunderwolfBot + formatted HTML
+    thinkingDiv.innerHTML = `<b>ThunderwolfBot:</b> ${replyHtml}`;
     chatBox.scrollTop = chatBox.scrollHeight;
 
-    const MIN_THINKING_MS = 1800;
-    const startTime = Date.now();
+    rotateSessionIfNeeded();
+  } catch (error) {
+    console.error("Chat error:", error);
 
-    try {
-      const response = await fetch(CONFIG.apiEndpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: message,
-          session_id: CONFIG.sessionId,
-        }),
-      });
-
-      if (!response.ok) {
-        let errorMsg = `Server error: ${response.status}`;
-        try {
-          const errData = await response.json();
-          if (errData && errData.message) {
-            errorMsg = errData.message;
-          }
-        } catch {
-          /* ignore JSON errors */
-        }
-        throw new Error(errorMsg);
-      }
-
-      const data = await response.json();
-      let reply = (data.response || data.reply || "").trim();
-
-      if (!reply) {
-        reply =
-          "I didn't catch this information, try asking in a different way.";
-      }
-
-      const elapsed = Date.now() - startTime;
-      if (elapsed < MIN_THINKING_MS) {
-        await new Promise((res) => setTimeout(res, MIN_THINKING_MS - elapsed));
-      }
-
-      thinkingDiv.innerHTML = `<b>Assistant:</b> ${reply}`;
-      chatBox.scrollTop = chatBox.scrollHeight;
-    } catch (error) {
-      console.error("Chat error:", error);
-
-      const elapsed = Date.now() - startTime;
-      if (elapsed < MIN_THINKING_MS) {
-        await new Promise((res) => setTimeout(res, MIN_THINKING_MS - elapsed));
-      }
-
-      thinkingDiv.innerHTML =
-        `<b>Assistant:</b> I'm having trouble connecting right now. ` +
-        `Please make sure the backend server is running and try again.`;
-      chatBox.scrollTop = chatBox.scrollHeight;
-    } finally {
-      userInput.disabled = false;
-      sendBtn.disabled = false;
-      userInput.focus();
+    const elapsed = Date.now() - startTime;
+    if (elapsed < MIN_THINKING_MS) {
+      await new Promise((res) => setTimeout(res, MIN_THINKING_MS - elapsed));
     }
+
+    thinkingDiv.innerHTML =
+      `<b>ThunderwolfBot:</b> I'm having trouble connecting right now. ` +
+      `Please make sure the backend server is running and try again.`;
+    chatBox.scrollTop = chatBox.scrollHeight;
+  } finally {
+    userInput.disabled = false;
+    sendBtn.disabled = false;
+    userInput.focus();
   }
+}
+
 
   // --- Wire events ---
   sendBtn.addEventListener("click", sendMessage);
