@@ -16,7 +16,14 @@ def create_app(config_object=None):
         Flask: Configured Flask application instance
     """
 
-    app = Flask(__name__, instance_relative_config=True)
+    backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    project_root = os.path.dirname(backend_root)
+
+    frontend_dir  = os.path.join(project_root, "frontend")
+    templates_dir = os.path.join(frontend_dir, "templates")
+    static_dir    = os.path.join(frontend_dir, "static")
+
+    app = Flask(__name__, instance_relative_config=True, template_folder=templates_dir, static_folder=static_dir)
 
     # Configure logging
     logging.basicConfig(
@@ -42,15 +49,11 @@ def create_app(config_object=None):
     # Configure CORS for frontend integration
     cors_origins = [
         "http://localhost:3000",  # React development server
-        "http://localhost:5000",  # Frontend test server
         "http://localhost:8080",  # Vue development server
-        "http://127.0.0.1:5000",  # Frontend test server (127.0.0.1)
-        "http://127.0.0.1:8080",  # Alternative port
         "https://*.pythonanywhere.com",  # PythonAnywhere domains
         "https://lakehead-chatbot.pythonanywhere.com"  # Production domain
     ]
-    # Allow all origins for development/prototype (disable in production)
-    CORS(app, resources={r"/*": {"origins": "*"}})
+    CORS(app, resources={r"/*": {"origins": "*"}}) 
 
     # Register API with automatic documentation
     from .api_routes import api  # pylint: disable=import-outside-toplevel
